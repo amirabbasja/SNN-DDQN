@@ -2,3 +2,4 @@
 .runs_data
 .env
 __pycache__
+conf.json

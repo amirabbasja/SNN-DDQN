@@ -1,6 +1,9 @@
 from collections import deque, namedtuple
 import os
 import argparse
+import requests
+import subprocess
+import json
 from typing import Union, Dict
 
 
@@ -740,3 +743,33 @@ def get_next_run_number_and_create_folder():
     os.makedirs(new_folder_path)
     
     return next_run_number, new_folder_path
+
+def updateCodeBase(repoUrl, localPath="./"):
+    """
+    Pull data from repository and update Python files.
+    
+    Args:
+        repoUrl (str): Repository URL (git clone URL or GitHub API URL)
+        localPath (str): Local directory path (default: current directory)
+    
+    Returns:
+        None
+    
+    Examples:
+        updateCodeBase("https://github.com/user/repo.git")
+    """
+    
+    # If it's a git repo, pull latest changes
+    if os.path.exists(os.path.join(localPath, ".git")):
+        try:
+            subprocess.run(["git", "pull"], cwd=localPath, check=True)
+            print("Git repository updated successfully")
+        except subprocess.CalledProcessError:
+            print("Failed to update git repository")
+    # Clone new repo if doesn't exist
+    else:
+        try:
+            subprocess.run(["git", "clone", repoUrl, localPath], check=True)
+            print("Repository cloned successfully")
+        except subprocess.CalledProcessError:
+            print("Failed to clone repository")
