@@ -1,7 +1,36 @@
 # Runs the training script with desired parameters
 import subprocess, os, time, sys, json,torch
-from utils import updateCodeBase
 from dotenv import load_dotenv
+
+def updateCodeBase(repoUrl, localPath="./"):
+    """
+    Pull data from repository and update Python files.
+    
+    Args:
+        repoUrl (str): Repository URL (git clone URL or GitHub API URL)
+        localPath (str): Local directory path (default: current directory)
+    
+    Returns:
+        None
+    
+    Examples:
+        updateCodeBase("https://github.com/user/repo.git")
+    """
+    
+    # If it's a git repo, pull latest changes
+    if os.path.exists(os.path.join(localPath, ".git")):
+        try:
+            subprocess.run(["git", "pull", "origin", "master"], cwd=localPath, check=True)
+            print("Git repository updated successfully")
+        except subprocess.CalledProcessError:
+            print("Failed to update git repository")
+    # Clone new repo if doesn't exist
+    else:
+        try:
+            subprocess.run(["git", "clone", repoUrl, localPath], check=True)
+            print("Repository cloned successfully")
+        except subprocess.CalledProcessError:
+            print("Failed to clone repository")
 
 # Before everything, update to the latest codebase
 load_dotenv()
