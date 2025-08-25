@@ -762,7 +762,7 @@ def updateCodeBase(repoUrl, localPath="./"):
     # If it's a git repo, pull latest changes
     if os.path.exists(os.path.join(localPath, ".git")):
         try:
-            subprocess.run(["git", "pull"], cwd=localPath, check=True)
+            subprocess.run(["git", "pull", "origin", "master"], cwd=localPath, check=True)
             print("Git repository updated successfully")
         except subprocess.CalledProcessError:
             print("Failed to update git repository")

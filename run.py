@@ -1,6 +1,13 @@
 # Runs the training script with desired parameters
-import subprocess, os, time, sys, json
-import torch
+import subprocess, os, time, sys, json,torch
+from utils import updateCodeBase
+from dotenv import load_dotenv
+
+# Before everything, update to the latest codebase
+load_dotenv()
+if os.getenv("code_base_link"):
+    print("Updating codebase...")
+    updateCodeBase(os.getenv("code_base_link"))
 
 # Open and read run configuration
 assert os.path.exists("conf.json"), "conf.json file doesn't exist"
