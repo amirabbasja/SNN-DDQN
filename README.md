@@ -5,16 +5,16 @@ We have deployed a DDQN architecture for training the agent. Both online and cri
   
 To run the code, two important files are required which are not added to repo and should be kep sectret. These files should contain following parameters:  
 1. `.env`  
-  `
+    ```
     session_name = <name of the session>
     huggingface_read = <read token for huggingFace>
     huggingface_write = <write token for huggingFace>
     repo_ID = <huggingFace repo ID>
     code_base_link = <github repo ID to update the files to the latest version before training>
     python_venv_path = <path to the venv exe file>
-  `
+    ```
 2. `conf.json`
-  `
+    ```
     {
         "name": "SNN_DDQN",
         "continue_run": false,
@@ -33,4 +33,4 @@ To run the code, two important files are required which are not added to repo an
         "snn_tSteps": 25,
         "snn_beta": 0.95
     }
-  `
+    ```
