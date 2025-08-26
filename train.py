@@ -1,4 +1,4 @@
-from models import qNetwork_ANN
+from models import *
 from collections import deque, namedtuple
 from huggingface_hub import HfApi, login
 import os
@@ -122,8 +122,14 @@ if __name__ == "__main__":
     saveFileName = f"{projectName}_{modelDetails}.pth"
     
     # Make the model objects
-    qNetwork_model = qNetwork_ANN([stateSize[0], *hiddenNodes, nActions]).to(__device, dtype = __dtype)
-    targetQNetwork_model = qNetwork_ANN([stateSize[0], *hiddenNodes, nActions]).to(__device, dtype = __dtype)
+    if args.architecture == "ann":
+        qNetwork_model = qNetwork_ANN([stateSize[0], *hiddenNodes, nActions]).to(__device, dtype = __dtype)
+        targetQNetwork_model = qNetwork_ANN([stateSize[0], *hiddenNodes, nActions]).to(__device, dtype = __dtype)
+    elif args.architecture == "snn":
+        qNetwork_model = qNetwork_SNN([stateSize[0], *hiddenNodes, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps).to(__device, dtype = __dtype)
+        targetQNetwork_model = qNetwork_SNN([stateSize[0], *hiddenNodes, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps).to(__device, dtype = __dtype)
+    else:
+        raise ValueError(f"Unknown architecture: {args.architecture}")
 
     # Two models should have identical weights initially
     targetQNetwork_model.load_state_dict(qNetwork_model.state_dict())

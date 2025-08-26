@@ -113,7 +113,7 @@ def download_repo_files(repo_name, branch='main', exclude_files=None, local_dir=
 
 # Before everything, update to the latest codebase
 load_dotenv()
-if os.getenv("code_base_link"):
+if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None:
     print("Updating codebase...")
     download_repo_files(os.getenv("code_base_link"), "master", ["run.py"], os.path.dirname(os.path.abspath(__file__)))
 
@@ -141,7 +141,10 @@ while time.time() < endTime:
         "extra_info": "",
         "max_run_time": data["max_run_time"], # In seconds
         "upload_to_cloud": data["upload_to_cloud"],
-        "local_backup": data["local_backup"]
+        "local_backup": data["local_backup"],
+        "architecture": data["architecture"],
+        "snn_tSteps": data["snn_tSteps"],
+        "snn_beta": data["snn_beta"]
     }
 
     # For passing the args to the script

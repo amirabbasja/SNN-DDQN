@@ -659,7 +659,7 @@ def modelParamParser():
     parser = argparse.ArgumentParser(description = "The neural network with specified parameters")
     
     # Add necessary arguments
-    parser.add_argument("--name", "-n", type = str, default = "parallelDQN", help = "The name of the model")
+    parser.add_argument("--name", "-n", type = str, default = "unknown", help = "The name of the model")
     parser.add_argument("--continue_run", "-c", action = "store_true", help = "Continue the last run")
     parser.add_argument("--agents", "-a", type = int, default = 1, help = "Number rof agents")
     parser.add_argument("--hidden_layers", "-hl", type = int, nargs = "+", default = [64, 64], help = "Hidden layer size")
@@ -671,6 +671,10 @@ def modelParamParser():
     parser.add_argument("--max_run_time", "-t", type = int, default = 60 * 60, help = "Maximum run time of training in seconds")
     parser.add_argument("--upload_to_cloud", "-u", action = "store_true", help = "Upload the training history to cloud")
     parser.add_argument("--local_backup", "-l", action = "store_true", help = "Save the training networks' data locally")
+    parser.add_argument("--architecture", "-ar", type = str, default = "ann", help = "The network architecture to use (ann or snn)")
+    parser.add_argument("--snn_tSteps", "-snn_t", type = int, default = 25, help = "Number of timesteps in SNN (if architecture is snn)")
+    parser.add_argument("--snn_beta", "-snn_b", type = float, default = 0.95, help = "Beta of the LIF model (if architecture is snn)")
+
     
     return parser
 
