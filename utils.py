@@ -747,3 +747,24 @@ def get_next_run_number_and_create_folder():
     os.makedirs(new_folder_path)
     
     return next_run_number, new_folder_path
+
+
+
+
+# Utility functions for plotting the training history and progress
+def plotEpisodeReward(df, saveLoc):
+    # Calculate 100-step moving average
+    df['Moving_Average'] = df['Value'].rolling(window=100).mean()
+
+    # Create the plot
+    plt.figure(figsize=(12, 6))
+    plt.plot(df.episode, df.points, label='Points', color='blue')
+    plt.plot(df.episode, df.Moving_Average, label='100 Episode Average', color='red', linewidth=1)
+    plt.title('Data with 100-Step Moving Average')
+    plt.xlabel('Episode')
+    plt.ylabel('points')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(saveLoc)
+    plt.close()

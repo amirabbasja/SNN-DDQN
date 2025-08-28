@@ -4,7 +4,7 @@ This repo is for training an RL agent using SNNs. The training is done using the
 We have deployed a DDQN architecture for training the agent. Both online and critique networks are SNNs.  
   
 To run the code, two important files are required which are not added to repo and should be kep sectret. These files should contain following parameters:  
-1. `.env`  
+1. *.env*  
     ```
     session_name = <name of the session>
     huggingface_read = <read token for huggingFace>
@@ -13,7 +13,7 @@ To run the code, two important files are required which are not added to repo an
     code_base_link = <github repo ID to update the files to the latest version before training>
     python_venv_path = <path to the venv exe file>
     ```
-2. `conf.json`
+2. *conf.json*
     ```
     {
         "name": "SNN_DDQN",

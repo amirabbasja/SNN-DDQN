@@ -304,8 +304,9 @@ if __name__ == "__main__":
 
         
         # Plot the progress
-        if (episode + 1) % 100 == 0:
-            pass
+        if (episode + 1) % 4 == 0:
+            histDf = pd.DataFrame(lstHistory)
 
+            plotEpisodeReward(histDf, os.path.join(runSavePath, f"episode_rewards.png"))
 
     env.close()
