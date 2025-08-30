@@ -142,6 +142,7 @@ while time.time() < endTime:
         "max_run_time": data["max_run_time"], # In seconds
         "upload_to_cloud": data["upload_to_cloud"],
         "local_backup": data["local_backup"],
+        "debug": data["debug"],
         "architecture": data["architecture"],
         "snn_tSteps": data["snn_tSteps"],
         "snn_beta": data["snn_beta"]
@@ -160,6 +161,10 @@ while time.time() < endTime:
         
         if name == "local_backup":
             scriptArgs.extend([f"--local_backup"]) if value else None
+            continue
+        
+        if name == "debug":
+            scriptArgs.extend([f"--debug"]) if value else None
             continue
         
         if name == "hidden_layers":

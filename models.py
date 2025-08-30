@@ -51,6 +51,16 @@ class qNetwork_SNN(nn.Module):
         # Model super parameters
         self.beta = kwargs["beta"]
         self.tSteps = kwargs["tSteps"]
+        if "DEBUG" in kwargs.keys():
+            self.DEBUG = kwargs["DEBUG"]
+        else:
+            self.DEBUG = False
+
+        # For saving information. parameters will be not-None only if the DEBUG flag is True
+        self.info = {
+            "totalSpikes": None,
+            "spikesPerLayer": [None for _ in range(len(layerSizes))]
+        } 
 
         # Build the network layers dynamically
         layers = []
@@ -81,6 +91,8 @@ class qNetwork_SNN(nn.Module):
         outPotentials = []
 
         # Iterate through time steps
+        _totalSpikes = 0
+        _spikesPerLayer = [0 for _ in range(len(self.layers))]
         for t in range(self.tSteps):
             current_input = x
             
@@ -95,9 +107,16 @@ class qNetwork_SNN(nn.Module):
                 # Set input for next layer
                 current_input = spike
                 
+                # Save info
+                if self.DEBUG:
+                    _spikesPerLayer[i] += spike.sum().item()
+                    _totalSpikes += spike.sum().item()
+                    self.info["spikesPerLayer"][i] = _spikesPerLayer[i]
+                    self.info["totalSpikes"] = _totalSpikes
+                
                 # If this is the output layer, save the results
                 if i == len(self.layers) - 1:  # Last layer (output)
                     outSpikes.append(spike)
                     outPotentials.append(potentials[i])
 
-        return torch.stack(outSpikes, dim=0).sum(dim=0)
+        return torch.stack(outSpikes, dim=0).sum(dim=0), self.info

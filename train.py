@@ -52,6 +52,9 @@ if uploadToCloud:
 
 _, runSavePath = get_next_run_number_and_create_folder()
 
+# Copy the config file to the run folder
+shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
+
 # Set pytorch seed
 networkSeed = random.randint(1,1_000_000_000)  # Choose any integer
 torch.manual_seed(networkSeed)
@@ -104,6 +107,7 @@ if __name__ == "__main__":
     gamma = args.gamma # The discount factor
     extraInfo = args.extra_info
     continueLastRun = args.continue_run
+    debugMode = args.debug
 
     # handle the save location
     modelDetails = f"{'_'.join([str(l) for l in hiddenNodes])}_{learningRate}_{eDecay}_{miniBatchSize}_{gamma}_{NUM_ENVS}_{extraInfo}"
@@ -126,8 +130,8 @@ if __name__ == "__main__":
         qNetwork_model = qNetwork_ANN([stateSize[0], *hiddenNodes, nActions]).to(__device, dtype = __dtype)
         targetQNetwork_model = qNetwork_ANN([stateSize[0], *hiddenNodes, nActions]).to(__device, dtype = __dtype)
     elif args.architecture == "snn":
-        qNetwork_model = qNetwork_SNN([stateSize[0], *hiddenNodes, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps).to(__device, dtype = __dtype)
-        targetQNetwork_model = qNetwork_SNN([stateSize[0], *hiddenNodes, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps).to(__device, dtype = __dtype)
+        qNetwork_model = qNetwork_SNN([stateSize[0], *hiddenNodes, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps, DEBUG = debugMode).to(__device, dtype = __dtype)
+        targetQNetwork_model = qNetwork_SNN([stateSize[0], *hiddenNodes, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps, DEBUG = debugMode).to(__device, dtype = __dtype)
     else:
         raise ValueError(f"Unknown architecture: {args.architecture}")
 
@@ -196,9 +200,16 @@ if __name__ == "__main__":
 
         tempTime = time.time()
 
+        if debugMode:
+            _totalSpikes = 0
+            _spikesPerLayer = [0 for _ in range(len(qNetwork_model.layers))]
         for t in range(maxNumTimeSteps):
 
-            qValueForActions = qNetwork_model(torch.tensor(state, device = __device, dtype = __dtype).unsqueeze(0))
+            qValueForActions, trainInfo = qNetwork_model(torch.tensor(state, device = __device, dtype = __dtype).unsqueeze(0))
+
+            if debugMode:
+                _totalSpikes += trainInfo["totalSpikes"]
+                _spikesPerLayer = [spikes + newFeedForwardSpikes for spikes, newFeedForwardSpikes in zip(_spikesPerLayer, trainInfo["spikesPerLayer"])]
 
             # use ebsilon-Greedy algorithm to take the new step
             action = getAction(qValueForActions, ebsilon, actionSpace, __device).cpu().numpy()[0]
@@ -207,15 +218,7 @@ if __name__ == "__main__":
             observation, reward, terminated, truncated, info = env.step(action)
 
             # Store the experience of the current step in an experience deque.
-            mem.addNew(
-                agentExp(
-                    state, # Current state
-                    action,
-                    reward, # Current state's reward
-                    observation, # Next state
-                    True if terminated or truncated else False
-                )
-            )
+            mem.addNew(agentExp(state, action,reward, observation,True if terminated or truncated else False))
 
             # Check to see if we have to update the networks in the current step
             update = updateNetworks(t, mem, miniBatchSize, numUpdateTS)
@@ -243,21 +246,19 @@ if __name__ == "__main__":
                 print(f"Memory details: {mem.len}")
                 print("===========================")
 
-            # Handle episode ending
-            if terminated or truncated:
-                # Save the episode history in dataframe
-                if (episode+1) % 3 == 0:
-                    # only save every 10 episodes
-                    lstHistory.append({
-                        "episode": episode,
-                        "seed": initialSeed,
-                        "points": points,
-                        "timesteps": t,
-                        "duration": time.time() - tempTime
-                    })
-                    
-                break
-
+        # Save the episode history in dataframe
+        lstHistory.append({
+            "episode": episode,
+            "seed": initialSeed,
+            "points": points,
+            "timesteps": t,
+            "duration": time.time() - tempTime,
+            "finalEpisodeReward": reward, # For deducting if termination is for winning or losing
+            "state": "terminated" if terminated else "truncated" if truncated else "none", # terminated or truncated or none
+            "totalSpikes": trainInfo["totalSpikes"] if args.architecture == "snn" and debugMode else None,
+            "spikesPerLayer": trainInfo["spikesPerLayer"] if args.architecture == "snn" and debugMode else None,
+        })
+        
         # Saving the current episode's points and time
         episodePointHist.append(points)
 
@@ -308,5 +309,7 @@ if __name__ == "__main__":
             histDf = pd.DataFrame(lstHistory)
 
             plotEpisodeReward(histDf, os.path.join(runSavePath, f"episode_rewards.png"))
+
+            plotTrainingProcess(histDf, os.path.join(runSavePath, f"training_process.png"))
 
     env.close()

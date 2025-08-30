@@ -193,13 +193,14 @@ def computeLoss(experiences:tuple, gamma:float, qNetwork, target_qNetwork):
 
     # To implement the calculation scheme explained in comments, we multiply Qhat by (1-done).
     # If the episode has terminated done == True so (1-done) = 0.
-    Qhat = torch.amax(target_qNetwork(nextState), dim = 1)
+    _targetQValues, _ = target_qNetwork(nextState)
+    Qhat = torch.amax(_targetQValues, dim = 1)
     yTarget = reward + gamma *  Qhat * ((1 - done)) # Using the bellman equation
 
     # IMPORTANT: When getting qValues, we have to account for the ebsilon-greedy algorithm as well.
     # This is why we dont use max(qValues in each state) but instead we use the qValues of the taken
     # action in that step.
-    qValues = qNetwork(state)
+    qValues, _ = qNetwork(state)
 
     qValues = qValues[torch.arange(state.shape[0], dtype = torch.long), action]
 
@@ -674,6 +675,7 @@ def modelParamParser():
     parser.add_argument("--architecture", "-ar", type = str, default = "ann", help = "The network architecture to use (ann or snn)")
     parser.add_argument("--snn_tSteps", "-snn_t", type = int, default = 25, help = "Number of timesteps in SNN (if architecture is snn)")
     parser.add_argument("--snn_beta", "-snn_b", type = float, default = 0.95, help = "Beta of the LIF model (if architecture is snn)")
+    parser.add_argument("--debug", "-db", action = "store_true", help = "Keep track of the training progress")
 
     
     return parser
@@ -766,5 +768,48 @@ def plotEpisodeReward(df, saveLoc):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    plt.savefig(saveLoc)
+    plt.close()
+
+def plotTrainingProcess(df, saveLoc):
+    # get cumulative sum of termianted or trunctated episodes
+    df["isTerminated"] = df["state"] == "terminated"
+    df["terminatedSum"] = df["isTerminated"].cumsum()
+    df["isTruncated"] = df["state"] == "truncated"
+    df["truncatedSum"] = df["isTruncated"].cumsum()
+
+    df["wonEpisode"] = 75 < df["finalEpisodeReward"]
+    df["wonEpisodeCount"] = df["wonEpisode"].cumsum()
+    df["wonEpisodeCountLas100"] = df["wonEpisode"].rolling(window=2).sum()
+    df["wonEpisodeCountPercent"] = df["wonEpisodeCount"] / (df["episode"] + 1) * 100
+    df["wonEpisodeCountLas100Percent"] = df["wonEpisodeCountLas100"] / 100 * 100
+
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True, figsize=(8, 6))
+
+    # Plot
+    ax1.set_title("Number of terminated and truncated episodes")
+    ax1.plot(df.episode, df.terminatedSum, label='terminated', color='blue')
+    ax1.plot(df.episode, df.truncatedSum, label='truncated', color='red')
+    ax1.grid()
+    ax1.legend()
+
+    # Plot
+    ax2.set_title("Percentage of won episodes")
+    ax2.plot(df.episode, df.wonEpisodeCountPercent, label='All episodes', color='blue')
+    ax2.plot(df.episode, df.wonEpisodeCountLas100Percent, label='Last 100 episodes', color='red')
+    ax2.grid()
+    ax2.legend()
+
+    # Plot
+    ax3.set_title("Total spikes")
+    ax3.plot(df.episode, df.points, label='Points', color='blue')
+    ax3.plot(df.episode, df.Moving_Average, label='100 Episode Average', color='red', linewidth=1)
+    ax3.grid()
+    ax3.legend()
+
+    # Adjust layout to prevent overlap
+    plt.tight_layout()
+
+    # Save plot
     plt.savefig(saveLoc)
     plt.close()
