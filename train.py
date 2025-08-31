@@ -255,8 +255,10 @@ if __name__ == "__main__":
             "duration": time.time() - tempTime,
             "finalEpisodeReward": reward, # For deducting if termination is for winning or losing
             "state": "terminated" if terminated else "truncated" if truncated else "none", # terminated or truncated or none
-            "totalSpikes": trainInfo["totalSpikes"] if args.architecture == "snn" and debugMode else None,
-            "spikesPerLayer": trainInfo["spikesPerLayer"] if args.architecture == "snn" and debugMode else None,
+            "totalSpikes": _totalSpikes if args.architecture == "snn" and debugMode else None,
+            "avgSpikes": _totalSpikes/t if args.architecture == "snn" and debugMode else None,
+            "spikesPerLayer": _spikesPerLayer if args.architecture == "snn" and debugMode else None,
+            "avgSpikesPerLayer": [spikes/t for spikes in _spikesPerLayer] if args.architecture == "snn" and debugMode else None,
         })
         
         # Saving the current episode's points and time
