@@ -784,7 +784,7 @@ def plotTrainingProcess(df, saveLoc):
     df["wonEpisodeCountPercent"] = df["wonEpisodeCount"] / (df["episode"] + 1) * 100
     df["wonEpisodeCountLas100Percent"] = df["wonEpisodeCountLas100"] / 100 * 100
 
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True, figsize=(8, 6))
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True, figsize=(8, 6))
 
     # Plot
     ax1.set_title("Number of terminated and truncated episodes")
@@ -801,9 +801,14 @@ def plotTrainingProcess(df, saveLoc):
     ax2.legend()
 
     # Plot
-    ax3.set_title("Total spikes")
-    ax3.plot(df.episode, df.points, label='Points', color='blue')
-    ax3.plot(df.episode, df.Moving_Average, label='100 Episode Average', color='red', linewidth=1)
+    ax3.set_title("Average Total Spikes")
+    ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
+    ax3.grid()
+    ax3.legend()
+
+    # Plot
+    ax3.set_title("Average Total Spikes")
+    ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
     ax3.grid()
     ax3.legend()
 
