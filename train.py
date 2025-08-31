@@ -246,6 +246,8 @@ if __name__ == "__main__":
                 print(f"Memory details: {mem.len}")
                 print("===========================")
 
+            if terminated or truncated or maxRunTime < time.time(): break
+
         # Save the episode history in dataframe
         lstHistory.append({
             "episode": episode,

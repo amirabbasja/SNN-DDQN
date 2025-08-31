@@ -670,6 +670,7 @@ def modelParamParser():
     parser.add_argument("--gamma", "-g", type = float, default = 0.995, help = "Discount factor")
     parser.add_argument("--extra_info", "-extra", type = str, default = "", help = "Extra information")
     parser.add_argument("--max_run_time", "-t", type = int, default = 60 * 60, help = "Maximum run time of training in seconds")
+    parser.add_argument("--train_max_time", "-tt", type = int, default = 60 * 60 * 4, help = "Sum of run time of all trainings in seconds")
     parser.add_argument("--upload_to_cloud", "-u", action = "store_true", help = "Upload the training history to cloud")
     parser.add_argument("--local_backup", "-l", action = "store_true", help = "Save the training networks' data locally")
     parser.add_argument("--architecture", "-ar", type = str, default = "ann", help = "The network architecture to use (ann or snn)")

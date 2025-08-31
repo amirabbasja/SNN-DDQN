@@ -140,6 +140,7 @@ while time.time() < endTime:
         "gamma": data["gamma"],
         "extra_info": "",
         "max_run_time": data["max_run_time"], # In seconds
+        "train_max_time": data["train_max_time"], # In seconds
         "upload_to_cloud": data["upload_to_cloud"],
         "local_backup": data["local_backup"],
         "debug": data["debug"],
