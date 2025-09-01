@@ -242,11 +242,12 @@ if __name__ == "__main__":
                 os.system('cls' if os.name == 'nt' else 'clear')
                 _lastPrintTime = time.time()
                 print(f"ElapsedTime: {int(time.time() - tstart): <5}s | Episode: {episode: <5} | Timestep: {t: <5} | The average of the {numP_Average: <5} episodes is: {int(epPointAvg): <5}")
-                print(f"Latest chekpoint: {latestCheckpoint} | Speed {t/(time.time()-tempTime+1e-9):.1f} tps | ebsilon: {ebsilon:.3f}")
+                print(f"Latest chekpoint: {latestCheckpoint} | Speed {t/(time.time()-tempTime+1e-9):.1f} tps | ebsilon: {ebsilon:.3f} ")
+                print(f"Remaining time of this run: {maxRunTime - time.time():.1f}s | Remaining time of all trainings: {args.train_finish_timestamp - time.time():.1f}s")
                 print(f"Memory details: {mem.len}")
                 print("===========================")
 
-            if terminated or truncated or maxRunTime < time.time(): break
+            if terminated or truncated or maxRunTime < time.time() or args.train_finish_timestamp < time.time(): break
 
         # Save the episode history in dataframe
         lstHistory.append({
@@ -309,7 +310,7 @@ if __name__ == "__main__":
 
         
         # Plot the progress
-        if (episode + 1) % 4 == 0:
+        if (episode + 1) % 100 == 0:
             histDf = pd.DataFrame(lstHistory)
 
             plotEpisodeReward(histDf, os.path.join(runSavePath, f"episode_rewards.png"))

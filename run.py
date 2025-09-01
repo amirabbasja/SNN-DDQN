@@ -112,6 +112,7 @@ def download_repo_files(repo_name, branch='main', exclude_files=None, local_dir=
     return results
 
 def send_telegram_message(bot_token, chat_id, message):
+    
     """Send a message to a Telegram user/chat"""
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
@@ -154,7 +155,7 @@ while time.time() < endTime:
         "gamma": data["gamma"],
         "extra_info": "",
         "max_run_time": data["max_run_time"], # In seconds
-        "train_max_time": data["train_max_time"], # In seconds
+        "train_finish_timestamp": endTime, # In seconds
         "upload_to_cloud": data["upload_to_cloud"],
         "local_backup": data["local_backup"],
         "debug": data["debug"],
