@@ -108,6 +108,7 @@ if __name__ == "__main__":
     extraInfo = args.extra_info
     continueLastRun = args.continue_run
     debugMode = args.debug
+    stopLearningPercent = args.stop_learning_at_win_percent
 
     # handle the save location
     modelDetails = f"{'_'.join([str(l) for l in hiddenNodes])}_{learningRate}_{eDecay}_{miniBatchSize}_{gamma}_{NUM_ENVS}_{extraInfo}"
@@ -191,6 +192,7 @@ if __name__ == "__main__":
     latestCheckpoint = 0
     _lastPrintTime = 0
 
+    _last100WinPercentage = 0
     for episode in range(startEpisode, nEpisodes):
         initialSeed = random.randint(1,1_000_000_000) # The random seed that determines the episode's I.C.
         state, info = env.reset(seed = initialSeed)
@@ -203,16 +205,18 @@ if __name__ == "__main__":
         if debugMode:
             _totalSpikes = 0
             _spikesPerLayer = [0 for _ in range(len(qNetwork_model.layers))]
-        for t in range(maxNumTimeSteps):
+            _nActionInEpisode = np.array([0 for _ in range(nActions)])
 
+        for t in range(maxNumTimeSteps):
             qValueForActions, trainInfo = qNetwork_model(torch.tensor(state, device = __device, dtype = __dtype).unsqueeze(0))
+
+            # use ebsilon-Greedy algorithm to take the new step
+            action = getAction(qValueForActions, ebsilon, actionSpace, __device).cpu().numpy()[0]
 
             if debugMode:
                 _totalSpikes += trainInfo["totalSpikes"]
                 _spikesPerLayer = [spikes + newFeedForwardSpikes for spikes, newFeedForwardSpikes in zip(_spikesPerLayer, trainInfo["spikesPerLayer"])]
-
-            # use ebsilon-Greedy algorithm to take the new step
-            action = getAction(qValueForActions, ebsilon, actionSpace, __device).cpu().numpy()[0]
+                _nActionInEpisode[action] += 1
 
             # Take a step
             observation, reward, terminated, truncated, info = env.step(action)
@@ -220,17 +224,18 @@ if __name__ == "__main__":
             # Store the experience of the current step in an experience deque.
             mem.addNew(agentExp(state, action,reward, observation,True if terminated or truncated else False))
 
-            # Check to see if we have to update the networks in the current step
-            update = updateNetworks(t, mem, miniBatchSize, numUpdateTS)
-            
-            if update:
-                # Update the NNs
-                experience = mem.sample(miniBatchSize)
+            if not stopLearningPercent < _last100WinPercentage:
+                # Check to see if we have to update the networks in the current step
+                update = updateNetworks(t, mem, miniBatchSize, numUpdateTS)
+                
+                if update:
+                    # Update the NNs
+                    experience = mem.sample(miniBatchSize)
 
-                # Update the Q-Network and the target Q-Network
-                # Bear in mind that we do not update the target Q-network with direct gradient descent.
-                # so there is no optimizer needed for it
-                fitQNetworks(experience, gamma, [qNetwork_model, optimizer_main], [targetQNetwork_model, None])
+                    # Update the Q-Network and the target Q-Network
+                    # Bear in mind that we do not update the target Q-network with direct gradient descent.
+                    # so there is no optimizer needed for it
+                    fitQNetworks(experience, gamma, [qNetwork_model, optimizer_main], [targetQNetwork_model, None])
 
             # Save the necessary data
             points += reward
@@ -249,6 +254,8 @@ if __name__ == "__main__":
 
             if terminated or truncated or maxRunTime < time.time() or args.train_finish_timestamp < time.time(): break
 
+        _last100WinPercentage = np.sum([1 if exp["finalEpisodeReward"] > 75 else 0 for exp in lstHistory[-100:]]) / 100
+
         # Save the episode history in dataframe
         lstHistory.append({
             "episode": episode,
@@ -262,6 +269,7 @@ if __name__ == "__main__":
             "avgSpikes": _totalSpikes/t if args.architecture == "snn" and debugMode else None,
             "spikesPerLayer": _spikesPerLayer if args.architecture == "snn" and debugMode else None,
             "avgSpikesPerLayer": [spikes/t for spikes in _spikesPerLayer] if args.architecture == "snn" and debugMode else None,
+            "nActionInEpisode": _nActionInEpisode
         })
         
         # Saving the current episode's points and time
@@ -308,7 +316,6 @@ if __name__ == "__main__":
                 backUpToCloud(obj = __data, objName = f"{session_name}-{saveFileName}", info = uploadInfo)
                 lastUploadTime = time.time()
 
-        
         # Plot the progress
         if (episode + 1) % 100 == 0:
             histDf = pd.DataFrame(lstHistory)

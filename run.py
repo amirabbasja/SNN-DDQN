@@ -158,6 +158,7 @@ while time.time() < endTime:
         "train_finish_timestamp": endTime, # In seconds
         "upload_to_cloud": data["upload_to_cloud"],
         "local_backup": data["local_backup"],
+        "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
         "debug": data["debug"],
         "architecture": data["architecture"],
         "snn_tSteps": data["snn_tSteps"],

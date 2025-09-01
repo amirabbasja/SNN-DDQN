@@ -66,7 +66,7 @@ class qNetwork_SNN(nn.Module):
         layers = []
         lifLayers = []
         
-        # Create hidden layers and their corresponding LIF neurons
+        # Layers and their corresponding LIF neurons
         for i in range(len(layerSizes) - 1):
             # Linear layer
             layer = nn.Linear(layerSizes[i], layerSizes[i + 1])
@@ -93,6 +93,7 @@ class qNetwork_SNN(nn.Module):
         # Iterate through time steps
         _totalSpikes = 0
         _spikesPerLayer = [0 for _ in range(len(self.layers))]
+
         for t in range(self.tSteps):
             current_input = x
             
@@ -118,5 +119,9 @@ class qNetwork_SNN(nn.Module):
                 if i == len(self.layers) - 1:  # Last layer (output)
                     outSpikes.append(spike)
                     outPotentials.append(potentials[i])
-
         return torch.stack(outSpikes, dim=0).sum(dim=0), self.info
+    
+
+
+
+    

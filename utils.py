@@ -668,6 +668,7 @@ def modelParamParser():
     parser.add_argument("--decay", "-d", type = float, default = 0.999, help = "Ebsilon decay rate")
     parser.add_argument("--batch", "-b", type = int, default = 1000, help = "The mini-batch size")
     parser.add_argument("--gamma", "-g", type = float, default = 0.995, help = "Discount factor")
+    parser.add_argument("--stop_learning_at_win_percent", "-slw", type = float, default = 0.995, help = "Stop updating the network if the last 100 episodes' win percent is greater than this value")
     parser.add_argument("--extra_info", "-extra", type = str, default = "", help = "Extra information")
     parser.add_argument("--max_run_time", "-t", type = int, default = 60 * 60, help = "Maximum run time of training in seconds")
     parser.add_argument("--train_finish_timestamp", "-tfts", type = float, default = 0., help = "The timestamp at which entire training (all runs) is finished")
@@ -786,7 +787,15 @@ def plotTrainingProcess(df, saveLoc):
     df["wonEpisodeCountPercent"] = df["wonEpisodeCount"] / (df["episode"] + 1) * 100
     df["wonEpisodeCountLas100Percent"] = df["wonEpisodeCountLas100"] / 100 * 100
 
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True, figsize=(8, 6))
+    actionCounts = np.array(df['nActionInEpisode'].tolist())
+
+    # Process the layer-wise spikes
+    _lst = df['spikesPerLayer'].tolist()
+    layerWiseSpikes = list(zip(*_lst))
+    layerWiseSpikes = [list(tup) for tup in layerWiseSpikes]
+    layerWiseSpikes
+
+    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, sharex=True, figsize=(8, 15))
 
     # Plot
     ax1.set_title("Number of terminated and truncated episodes")
@@ -800,12 +809,14 @@ def plotTrainingProcess(df, saveLoc):
     ax2.plot(df.episode, df.wonEpisodeCountPercent, label='All episodes', color='blue')
     ax2.plot(df.episode, df.wonEpisodeCountLas100Percent, label='Last 100 episodes', color='red')
     ax2.grid()
+    ax2.set_ylim(0, 100)
     ax2.legend()
 
     # Plot
     ax3.set_title("Average Total Spikes")
     ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
     ax3.grid()
+    ax3.grid()
     ax3.legend()
 
     # Plot
@@ -813,6 +824,20 @@ def plotTrainingProcess(df, saveLoc):
     ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
     ax3.grid()
     ax3.legend()
+
+    # Plot
+    ax4.set_title("Layer-wise Spikes")
+    for i in range(len(layerWiseSpikes)):
+        ax4.plot(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output' )
+    ax4.grid()
+    ax4.legend()
+
+    # Plot
+    plot_action_distribution(actionCounts, ax5)
+    ax5.set_title("Action distribution")
+    ax5.plot(df.episode, df.avgSpikes, label='Points', color='blue')
+    ax5.grid()
+    ax5.legend()
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
