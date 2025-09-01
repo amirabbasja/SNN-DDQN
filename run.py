@@ -1,5 +1,6 @@
 # Runs the training script with desired parameters
 import subprocess, os, time, sys, json, torch, requests, base64
+from utils import send_telegram_message
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 
@@ -126,6 +127,9 @@ startTime = time.time()
 endTime = startTime + data["train_max_time"]  # 3.5 hours
 maxRunTime = data["max_run_time"]  # 45 min
 
+if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
+    send_telegram_message(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training started for session {os.getenv('session_name')}")
+
 trainingEpoch = 1
 while time.time() < endTime:
     # Run parameters
@@ -207,5 +211,8 @@ while time.time() < endTime:
         print(f"Error running script: {e}")
     
     trainingEpoch += 1
+
+if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
+    send_telegram_message(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training finished started for session {os.getenv('session_name')}")
 
 print(f"Reached the maximum run time. Trained {trainingEpoch} epochs")

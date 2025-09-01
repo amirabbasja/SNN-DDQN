@@ -753,8 +753,22 @@ def get_next_run_number_and_create_folder():
 
 
 
+# Utility functions for contacting user via Telegram
+
+def send_telegram_message(bot_token, chat_id, message):
+    """Send a message to a Telegram user/chat"""
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': message
+    }
+    response = requests.post(url, data=payload)
+    return response.json()
+
+
 
 # Utility functions for plotting the training history and progress
+
 def plotEpisodeReward(df, saveLoc):
     # Calculate 100-step moving average
     df['Moving_Average'] = df.points.rolling(window=100).mean()
