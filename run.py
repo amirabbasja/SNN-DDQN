@@ -1,6 +1,5 @@
 # Runs the training script with desired parameters
 import subprocess, os, time, sys, json, torch, requests, base64
-from utils import send_telegram_message
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 
@@ -111,6 +110,17 @@ def download_repo_files(repo_name, branch='main', exclude_files=None, local_dir=
     print(f"Errors: {len(results['errors'])}")
     
     return results
+
+def send_telegram_message(bot_token, chat_id, message):
+    """Send a message to a Telegram user/chat"""
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': message
+    }
+    response = requests.post(url, data=payload)
+    return response.json()
+
 
 # Before everything, update to the latest codebase
 load_dotenv()
