@@ -801,42 +801,34 @@ def plotTrainingProcess(df, saveLoc):
     ax1.set_title("Number of terminated and truncated episodes")
     ax1.plot(df.episode, df.terminatedSum, label='terminated', color='blue')
     ax1.plot(df.episode, df.truncatedSum, label='truncated', color='red')
-    ax1.grid()
     ax1.legend()
 
     # Plot
     ax2.set_title("Percentage of won episodes")
     ax2.plot(df.episode, df.wonEpisodeCountPercent, label='All episodes', color='blue')
     ax2.plot(df.episode, df.wonEpisodeCountLas100Percent, label='Last 100 episodes', color='red')
-    ax2.grid()
     ax2.set_ylim(0, 100)
     ax2.legend()
 
     # Plot
     ax3.set_title("Average Total Spikes")
     ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
-    ax3.grid()
-    ax3.grid()
     ax3.legend()
 
     # Plot
     ax3.set_title("Average Total Spikes")
     ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
-    ax3.grid()
     ax3.legend()
 
     # Plot
     ax4.set_title("Layer-wise Spikes")
     for i in range(len(layerWiseSpikes)):
-        ax4.plot(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output' )
-    ax4.grid()
+        ax4.scatter(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output', s = 15)
     ax4.legend()
 
     # Plot
     plot_action_distribution(actionCounts, ax5)
     ax5.set_title("Action distribution")
-    ax5.plot(df.episode, df.avgSpikes, label='Points', color='blue')
-    ax5.grid()
     ax5.legend()
 
     # Adjust layout to prevent overlap
