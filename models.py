@@ -120,8 +120,32 @@ class qNetwork_SNN(nn.Module):
                     outSpikes.append(spike)
                     outPotentials.append(potentials[i])
         return torch.stack(outSpikes, dim=0).sum(dim=0), self.info
+
+
+# Utility functions for models
+
+def computeGradientNorms(model):
+    """
+    Computes the L2 norm for molde layer gradients. 
+
+    Args:
+        model (torch.nn.Module): The model to compute the gradient norms for.
     
-
-
-
+    Returns:
+        L2 norm of the entire model, layer-wise L2 norms
+    """
+    totNorm = 0.0
+    layerNorms = {}
     
+    for name, p in model.named_parameters():
+        if p.grad is not None:  # Check if gradients exist
+            # Compute L2 norm for the layer
+            paramNorm = p.grad.data.norm(2).item()
+            layerNorms[name] = paramNorm
+            # Add to total norm (sum of squares)
+            totNorm += paramNorm ** 2
+    
+    # Finalize total norm by taking square root
+    totNorm = totNorm ** 0.5
+    
+    return totNorm, layerNorms

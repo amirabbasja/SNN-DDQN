@@ -684,6 +684,7 @@ def modelParamParser():
     return parser
 
 # For visualizition
+
 def plot_action_distribution(action_counts, ax=None):
     """
     Plot action distribution across episodes as stacked bar chart.
@@ -730,7 +731,6 @@ def plot_action_distribution(action_counts, ax=None):
     plt.tight_layout()
     return fig, ax
 
-
 def get_next_run_number_and_create_folder():
     # Define the runs_data directory path
     runs_data_dir = "runs_data"
@@ -752,7 +752,6 @@ def get_next_run_number_and_create_folder():
     os.makedirs(new_folder_path)
     
     return next_run_number, new_folder_path
-
 
 
 # Utility functions for plotting the training history and progress
@@ -830,6 +829,33 @@ def plotTrainingProcess(df, saveLoc):
     plot_action_distribution(actionCounts, ax5)
     ax5.set_title("Action distribution")
     ax5.legend()
+
+    # Adjust layout to prevent overlap
+    plt.tight_layout()
+
+    # Save plot
+    plt.savefig(saveLoc)
+    plt.close()
+
+def plotGradientNorms(df, saveLoc):
+    totalNormHist = df['totalGradientNorms'].tolist()
+    
+    dfSeparated = pd.json_normalize(df['layerWiseNorms']).dropna()
+    print(df['layerWiseNorms'])
+    print(dfSeparated)
+    names = dfSeparated.columns
+    nPlots = int(dfSeparated.shape[1] / 2) + 1
+
+    fig, axes = plt.subplots(nPlots, 1, sharex=True, figsize=(8, 3 * nPlots))
+
+    for i in range(nPlots - 1):
+        ax = axes[i]
+        ax.plot(range(len(dfSeparated.iloc[:, i*2])), dfSeparated.iloc[:, i*2], label=f'{names[i*2].replace(".", " ")}')
+        ax.plot(range(len(dfSeparated.iloc[:, i*2 + 1])), dfSeparated.iloc[:, i*2 + 1], label=f'{names[i*2 + 1].replace(".", " ")}')
+        ax.legend()
+
+    axes[-1].plot(range(len(totalNormHist)), totalNormHist, label='Total Norm')
+    axes[-1].legend()
 
     # Adjust layout to prevent overlap
     plt.tight_layout()

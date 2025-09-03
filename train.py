@@ -217,6 +217,7 @@ if __name__ == "__main__":
                 _totalSpikes += trainInfo["totalSpikes"]
                 _spikesPerLayer = [spikes + newFeedForwardSpikes for spikes, newFeedForwardSpikes in zip(_spikesPerLayer, trainInfo["spikesPerLayer"])]
                 _nActionInEpisode[action] += 1
+                _gradientNorms, _layerWiseNorms = computeGradientNorms(qNetwork_model)
 
             # Take a step
             observation, reward, terminated, truncated, info = env.step(action)
@@ -269,8 +270,12 @@ if __name__ == "__main__":
             "avgSpikes": _totalSpikes/t if args.architecture == "snn" and debugMode else None,
             "spikesPerLayer": _spikesPerLayer if args.architecture == "snn" and debugMode else None,
             "avgSpikesPerLayer": [spikes/t for spikes in _spikesPerLayer] if args.architecture == "snn" and debugMode else None,
-            "nActionInEpisode": _nActionInEpisode
+            "nActionInEpisode": _nActionInEpisode,
+            "totalGradientNorms": _gradientNorms if debugMode else None,
+            "layerWiseNorms": _layerWiseNorms if debugMode else None
         })
+        print(_layerWiseNorms)
+        print(_gradientNorms)
         
         # Saving the current episode's points and time
         episodePointHist.append(points)
@@ -317,11 +322,13 @@ if __name__ == "__main__":
                 lastUploadTime = time.time()
 
         # Plot the progress
-        if (episode + 1) % 100 == 0:
+        if (episode + 1) % 2 == 0:
             histDf = pd.DataFrame(lstHistory)
 
             plotEpisodeReward(histDf, os.path.join(runSavePath, f"episode_rewards.png"))
 
             plotTrainingProcess(histDf, os.path.join(runSavePath, f"training_process.png"))
+
+            plotGradientNorms(histDf, os.path.join(runSavePath, f"gradient_norms.png"))
 
     env.close()
