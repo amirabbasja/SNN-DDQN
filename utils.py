@@ -566,8 +566,8 @@ def backUpToCloud(filePath = None, obj = None, objName = None, info: dict = None
 def loadNetwork(fileName, **kwargs):
     """
     Loads the previous training details from a file. The file should be 
-    a dictionary, with all the details necessary to pickup where you left.
-    The necessary data are explained below.
+    a dictionary, with all the details necessary to pickup where we left.
+    The necessary data are explained below:
     
     Args:
         fileName (str): The name of the file
@@ -593,7 +593,7 @@ def loadNetwork(fileName, **kwargs):
     assert "optimizer_main" in kwargs.keys(), "Please pass the optimizer_main object"
     assert "targetQNetwork_model" in kwargs.keys(), "Please pass the targetQNetwork_model object"
     assert "trainingParams" in kwargs.keys(), "Please pass the trainingParams object"
-    assert len(kwargs["trainingParams"]) != 5, "You should enter the following parameters in the order:\nstartEpisode, startEbsilon, lstHistory, eDecay, mem"
+    if len(kwargs["trainingParams"]) != 6: print( f"You should enter the following parameters in the order: startEpisode, startEbsilon, lstHistory, eDecay, mem.")
     
     if os.path.isfile(fileName):
         try:
@@ -632,7 +632,7 @@ def loadNetwork(fileName, **kwargs):
                 __data["experiences"]["nextState"],
                 __data["experiences"]["done"],
             )
-
+            
             # All changes are in-place, however, we return the changed objects for convenience
             return (
                 kwargs["qNetwork_model"],
@@ -731,7 +731,10 @@ def plot_action_distribution(action_counts, ax=None):
     plt.tight_layout()
     return fig, ax
 
-def get_next_run_number_and_create_folder():
+def get_next_run_number_and_create_folder(continueLastRun = False):
+    """
+    Searches for existing folders in runs_data and returns the next available run number and folder path
+    """
     # Define the runs_data directory path
     runs_data_dir = "runs_data"
     
@@ -745,11 +748,15 @@ def get_next_run_number_and_create_folder():
     
     # Filter for folders with numeric names and find the highest number
     run_numbers = [int(f) for f in existing_folders if f.isdigit()]
-    next_run_number = max(run_numbers) + 1 if run_numbers else 1
+
+    if not continueLastRun:
+        next_run_number = max(run_numbers) + 1 if run_numbers else 1
+    else:
+        next_run_number = max(run_numbers) if run_numbers else 1
     
     # Create new folder with the next run number
     new_folder_path = os.path.join(runs_data_dir, str(next_run_number))
-    os.makedirs(new_folder_path)
+    os.makedirs(new_folder_path, exist_ok=True)
     
     return next_run_number, new_folder_path
 
@@ -821,8 +828,9 @@ def plotTrainingProcess(df, saveLoc):
 
     # Plot
     ax4.set_title("Layer-wise Spikes")
+    ax4.set_yscale('log')
     for i in range(len(layerWiseSpikes)):
-        ax4.scatter(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output', s = 15)
+        ax4.scatter(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output', s = 8)
     ax4.legend()
 
     # Plot
@@ -841,8 +849,6 @@ def plotGradientNorms(df, saveLoc):
     totalNormHist = df['totalGradientNorms'].tolist()
     
     dfSeparated = pd.json_normalize(df['layerWiseNorms']).dropna()
-    print(df['layerWiseNorms'])
-    print(dfSeparated)
     names = dfSeparated.columns
     nPlots = int(dfSeparated.shape[1] / 2) + 1
 
@@ -850,12 +856,14 @@ def plotGradientNorms(df, saveLoc):
 
     for i in range(nPlots - 1):
         ax = axes[i]
+        ax.set_yscale('log')
         ax.plot(range(len(dfSeparated.iloc[:, i*2])), dfSeparated.iloc[:, i*2], label=f'{names[i*2].replace(".", " ")}')
         ax.plot(range(len(dfSeparated.iloc[:, i*2 + 1])), dfSeparated.iloc[:, i*2 + 1], label=f'{names[i*2 + 1].replace(".", " ")}')
         ax.legend()
 
     axes[-1].plot(range(len(totalNormHist)), totalNormHist, label='Total Norm')
     axes[-1].legend()
+    axes[-1].set_yscale('log')
 
     # Adjust layout to prevent overlap
     plt.tight_layout()

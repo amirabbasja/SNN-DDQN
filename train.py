@@ -50,32 +50,11 @@ if uploadToCloud:
         "replace": True
     }
 
-_, runSavePath = get_next_run_number_and_create_folder()
+continueLastRun = args.continue_run
+_, runSavePath = get_next_run_number_and_create_folder(continueLastRun)
 
 # Copy the config file to the run folder
 shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
-
-# Set pytorch seed
-networkSeed = random.randint(1,1_000_000_000)  # Choose any integer
-torch.manual_seed(networkSeed)
-torch.cuda.manual_seed_all(networkSeed)  # If using CUDA
-np.random.seed(networkSeed)
-random.seed(networkSeed)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-
-# Define the super parameters
-projectName = args.name
-
-# Save/Get weights from persistent storage. Pass empty string for not saving. 
-# Pass drive for using google derive (If code is running in colab). If local, 
-# pass the location of your desire
-savePath = os.path.join(os.path.dirname(__file__), "Data")
-continueLastRun = args.continue_run
-backUpData = {}
-
-# Make the save directory if it does not exist
-os.makedirs(savePath, exist_ok = True)
 
 if __name__ == "__main__":
     runStartTime = time.time() # The time the training begun
@@ -100,6 +79,7 @@ if __name__ == "__main__":
     __dtype = torch.float
 
     # Model parameters
+    projectName = args.name
     hiddenNodes = args.hidden_layers
     learningRate = args.learning_rate
     eDecay = args.decay
@@ -111,18 +91,12 @@ if __name__ == "__main__":
     stopLearningPercent = args.stop_learning_at_win_percent
 
     # handle the save location
+    backUpData = {}
     modelDetails = f"{'_'.join([str(l) for l in hiddenNodes])}_{learningRate}_{eDecay}_{miniBatchSize}_{gamma}_{NUM_ENVS}_{extraInfo}"
-    savePath = os.path.join(savePath, f"{projectName}_{modelDetails}")
-    os.makedirs(savePath, exist_ok=True)
     
     # Set the upload directory name
     if uploadToCloud:
         uploadInfo["dirName"] = f"./{session_name}-{projectName}_{modelDetails}"
-
-    # Get how many times the model has been trained and add it to the file name
-    runNumber =  len([f for f in os.listdir(savePath) if f"{modelDetails}" in f]) if savePath != None else ""
-    runNumber = runNumber if not continueLastRun else runNumber -1
-    modelDetails += f"_{runNumber}"
     
     saveFileName = f"{projectName}_{modelDetails}.pth"
     
@@ -153,17 +127,17 @@ if __name__ == "__main__":
     memorySize = 100_000 # The length of the entire memory
     mem = ReplayMemory(memorySize, __dtype, __device)
 
-    if continueLastRun and os.path.isfile(os.path.join(savePath, saveFileName)):
+    if continueLastRun and os.path.isfile(os.path.join(runSavePath, saveFileName)):
         # Load necessary parameters to resume the training from most recent run 
-        saveLen = 1
         load_params = {
             "qNetwork_model": qNetwork_model,
             "optimizer_main": optimizer_main,
             "targetQNetwork_model": targetQNetwork_model,
-            "trainingParams": [startEpisode, startEbsilon, lstHistory, eDecay, mem]
+            "trainingParams": [startEpisode, startEbsilon, lstHistory, eDecay, NUM_ENVS, mem]
         }
+
         # NUM_ENVS is a constant and is defined when running the script for the first time, So we disregard re-loading it
-        qNetwork_model, optimizer_main, targetQNetwork_model, startEpisode, startEbsilon, lstHistory, eDecay, _, mem = loadNetwork(os.path.join(savePath, saveFileName), **load_params)
+        qNetwork_model, optimizer_main, targetQNetwork_model, startEpisode, startEbsilon, lstHistory, eDecay, _, mem = loadNetwork(os.path.join(runSavePath, saveFileName), **load_params)
         print("Continuing from episode:", startEpisode)
 
     print(f"Device is: {__device}")
@@ -191,7 +165,7 @@ if __name__ == "__main__":
     epPointAvg = -999999 if len(lstHistory) == 0 else pd.DataFrame(lstHistory).iloc[-numP_Average:]["points"].mean()
     latestCheckpoint = 0
     _lastPrintTime = 0
-
+    
     _last100WinPercentage = 0
     for episode in range(startEpisode, nEpisodes):
         initialSeed = random.randint(1,1_000_000_000) # The random seed that determines the episode's I.C.
@@ -274,8 +248,6 @@ if __name__ == "__main__":
             "totalGradientNorms": _gradientNorms if debugMode else None,
             "layerWiseNorms": _layerWiseNorms if debugMode else None
         })
-        print(_layerWiseNorms)
-        print(_gradientNorms)
         
         # Saving the current episode's points and time
         episodePointHist.append(points)
@@ -288,7 +260,7 @@ if __name__ == "__main__":
 
         # Save model weights and parameters periodically (For later use)
         if local_backup:
-            if (episode + 1) % 100 == 0:
+            if (episode + 1) % 2 == 0:
                 _exp = mem.exportExperience()
                 backUpData = {
                     "episode": episode,
@@ -309,8 +281,7 @@ if __name__ == "__main__":
                 }
                 # Save the episode number
                 latestCheckpoint = episode
-
-                saveModel(backUpData, os.path.join(savePath, saveFileName))
+                saveModel(backUpData, os.path.join(runSavePath, saveFileName))
         
         # Upload the lightweight progress data to cloud
         if uploadToCloud:
