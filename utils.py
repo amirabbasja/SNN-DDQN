@@ -852,11 +852,11 @@ def plotGradientNorms(df, saveLoc):
     for i in range(nPlots - 1):
         ax = axes[i]
         ax.set_yscale('log')
-        ax.plot(range(len(dfSeparated.iloc[:, i*2])), dfSeparated.iloc[:, i*2], label=f'{names[i*2].replace(".", " ")}')
-        ax.plot(range(len(dfSeparated.iloc[:, i*2 + 1])), dfSeparated.iloc[:, i*2 + 1], label=f'{names[i*2 + 1].replace(".", " ")}')
+        ax.scatter(range(len(dfSeparated.iloc[:, i*2])), dfSeparated.iloc[:, i*2], label=f'{names[i*2].replace(".", " ")}', s = 3)
+        ax.scatter(range(len(dfSeparated.iloc[:, i*2 + 1])), dfSeparated.iloc[:, i*2 + 1], label=f'{names[i*2 + 1].replace(".", " ")}', s = 3)
         ax.legend()
 
-    axes[-1].plot(range(len(totalNormHist)), totalNormHist, label='Total Norm')
+    axes[-1].scatter(range(len(totalNormHist)), totalNormHist, label='Total Norm', s = 3)
     axes[-1].legend()
     axes[-1].set_yscale('log')
 

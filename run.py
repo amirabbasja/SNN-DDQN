@@ -225,6 +225,6 @@ while time.time() < endTime:
     trainingEpoch += 1
 
 if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
-    send_telegram_message(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training finished started for session {os.getenv('session_name')}")
+    send_telegram_message(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training finished for session {os.getenv('session_name')}. Took {((time.time() - startTime)/3600):.2f} hours.")
 
 print(f"Reached the maximum run time. Trained {trainingEpoch} epochs")
