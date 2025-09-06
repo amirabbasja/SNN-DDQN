@@ -818,19 +818,14 @@ def plotTrainingProcess(df, saveLoc):
 
     # Plot
     ax3.set_title("Average Total Spikes")
-    ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
-    ax3.legend()
-
-    # Plot
-    ax3.set_title("Average Total Spikes")
-    ax3.plot(df.episode, df.avgSpikes, label='Points', color='blue')
+    ax3.scatter(df.episode, df.avgSpikes, label='AVG spike number', color='blue', s = 3)
     ax3.legend()
 
     # Plot
     ax4.set_title("Layer-wise Spikes")
     ax4.set_yscale('log')
     for i in range(len(layerWiseSpikes)):
-        ax4.scatter(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output', s = 8)
+        ax4.scatter(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output', s = 3)
     ax4.legend()
 
     # Plot
