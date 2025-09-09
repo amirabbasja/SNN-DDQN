@@ -123,6 +123,17 @@ def send_telegram_message(bot_token, chat_id, message):
     return response.json()
 
 
+# Install packages
+subprocess.check_call([sys.executable, "-m", "pip", "install", "swig"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", 'gymnasium[box2d]'])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "snntorch"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "imageio"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "huggingface_hub"])
+
+# IF facing box2d not found errors, despite installing it, try following two lines:
+# conda install -c conda-forge swig box2d-py
+# pip install "gymnasium[box2d]"
+
 # Before everything, update to the latest codebase
 load_dotenv()
 if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None:
