@@ -17,7 +17,7 @@ To run the code, two important files are required which are not added to repo an
     ```
     {
         "name": "SNN_DDQN",
-        "continue_run": false,
+        "continue_run": true,
         "agents": 1,
         "hidden_layers": [64, 64],
         "learning_rate": 0.0004,
@@ -25,12 +25,42 @@ To run the code, two important files are required which are not added to repo an
         "batch": 100,
         "gamma": 0.995,
         "extra_info": "",
-        "max_run_time": 2700, 
+        "max_run_time": 12600, 
+        "stop_learning_at_win_percent": 80,
         "train_max_time": 12600,
         "upload_to_cloud": false,
-        "local_backup": false,
+        "local_backup": true,
         "architecture": "snn",
         "snn_tSteps": 25,
-        "snn_beta": 0.95
+        "snn_beta": 0.95,
+        "debug": true
     }
     ```
+3. *studios.json*
+    ```
+    {
+        "studio_1": {
+            "user": "testName", <-- Session name>
+            "apiKey": "...", <-- lightning ai api key
+            "userID": "...", <-- lightning ai user ID
+            "teamspaceName": "Vision-model", <-- lightning ai api teamspace name
+            "studioName": "paper_no.6", <-- lightning ai api studio name
+            "commandToRun": "python /teamspace/studios/this_studio/run.py" <-- Command to run
+        },
+    }
+    ```
+  
+  
+---
+  
+# Description of the files and folders
+
+1. *serverRunner/:* A directory for running the automated training runs. This folder requires node.js to be installed on machine. Run the file *trainingRunner.js* to start the training which will get all provided **lightning AI** studios (located in *studios.json*) to run, run them with a pre-defined delay with a 4 hour delay between each batch of run. This will help with staying in the free hours of the platform (First 4 hours are free). The javascript file runs *sendReq.py* to run the studios which sends a command to run the `commandToRun` key in studios.json. The script is coded so to work in the scheme of *fire and forget* and after making a request to run the command in the studio, nothing else is checked with it and after a set amount of time has passed, *trainingRunner.js* will kill the child process. So NO feedback is given to the user and the training is done in the background. This should be done seperately on the train.py file.
+
+2. *models.py:* A file containing necessary calsses to define the network architectures. Currently SNNs (Spiking Neural Networks) and classic ANNs are supported.
+
+3. *run.py:* Tasked with running the *train.py* file with necessary arguments, acquired from *.env* and *conf.json* files. Another **VERY** important task of this file is to keep the entire repository up-to-date with the latest version of the code pointed in the `code_base_link` key of environemnt file. When running, checks to see if all packages are installed, then downloads and replaces the files with the latest version (Except for itself, run.py, which if changed, has to be replaced manually). I deployed this functionality to reduce the amount of effort required to keep the code base up-to-date in multiple servers.
+
+4. *train.py:* Performs the training process. Shouldn't be ran stand-alone.
+
+5. *utils.py:* Houses the utility functions necessary to keep the entire repo working.
