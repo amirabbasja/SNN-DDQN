@@ -789,7 +789,7 @@ def plotTrainingProcess(df, saveLoc):
 
     df["wonEpisode"] = 75 < df["finalEpisodeReward"]
     df["wonEpisodeCount"] = df["wonEpisode"].cumsum()
-    df["wonEpisodeCountLas100"] = df["wonEpisode"].rolling(window=2).sum()
+    df["wonEpisodeCountLas100"] = df["wonEpisode"].rolling(window=100).sum()
     df["wonEpisodeCountPercent"] = df["wonEpisodeCount"] / (df["episode"] + 1) * 100
     df["wonEpisodeCountLas100Percent"] = df["wonEpisodeCountLas100"] / 100 * 100
 
