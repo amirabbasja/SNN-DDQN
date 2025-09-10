@@ -16,7 +16,7 @@ async function readJsonFile(path) {
 function runPythonScript(param) {
     return new Promise((resolve, reject) => {
         // Spawn a child process to run the Python script
-        const pythonProcess = spawn('python', ['./serverRunner/startStudio.py', param])
+        const pythonProcess = spawn('python', ['./serverRunner/stopStudio.py', param])
 
         let output = ''
         let errorOutput = ''
@@ -72,13 +72,8 @@ function runPythonScript(param) {
 
 const studios = await readJsonFile("./studios.json")
 
-while (true) {
-    for(let studioName in studios){
-        console.log("Starting for", studios[studioName].user)
-        runPythonScript(JSON.stringify(studios[studioName]))
-        await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000))
-    }
-
-    // Wait for 4 hours
-    await new Promise(resolve => setTimeout(resolve, 4 * 60 * 60 * 1000))
+for(let studioName in studios){
+    console.log("Stopping studio", studios[studioName].user)
+    runPythonScript(JSON.stringify(studios[studioName]))
+    await new Promise(resolve => setTimeout(resolve, 10000))
 }

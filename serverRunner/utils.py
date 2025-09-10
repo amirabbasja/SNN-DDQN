@@ -1,4 +1,3 @@
-# Runs lightning.ai studios by acquiring their inforamtion from studios.json file
 import json, os, time, threading, asyncio, sys, json, time
 from lightning_sdk import Machine, Studio
 
@@ -89,14 +88,3 @@ def startTraining(credentials):
     time.sleep(10)
 
     runCommand(credentials, credentials["commandToRun"])
-
-# async def main():
-# Get the JSON string from command-line argument
-json_string = sys.argv[1] if len(sys.argv) > 1 else "{}"
-param = json.loads(json_string)
-
-# stopStudio(param)
-startTraining(param)
-
-# main()
-
