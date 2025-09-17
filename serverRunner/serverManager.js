@@ -121,6 +121,16 @@ bot.on('message', async (msg) => {
         } else {
             bot.editMessageText(`Unknown error for stopping studio ${studios[studioName].user}: ${result}`, {chat_id: chatId, message_id: lastMessageId})
         }
+    } else if(text.toLowerCase()?.startsWith("stop_all")){
+        // Stops all studios
+        bot.sendMessage(chatId, `Stopping all studios (0/${Object.keys(studios).length}) ...`).then(sentMsg => {lastMessageId = sentMsg.message_id;})
+        let i = 1
+        for(let name of Object.keys(studios)){
+            const params = { action: "stop_single", credentials: JSON.stringify(studios[name])}
+            const result = await runPythonScript("./serverRunner/studioManager.py", params)
+            bot.editMessageText(`Studio ${studios[studioName].user} stopped`, {chat_id: chatId, message_id: lastMessageId})
+        }
+        bot.sendMessage(chatId, `All studios stopped.`)
     } else if(text.toLowerCase()?.startsWith("status") && !text.toLowerCase()?.startsWith("status_all")){
         // gets status for a single studop
         const parts = text.split(" ")
@@ -167,6 +177,15 @@ bot.on('message', async (msg) => {
             i++
             await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000))
         }
+    } else {
+        // If the command is not recognized, send a help message
+        textToSend = "Unrecognized command. Available commands:\n" +
+            "- list: Lists all available studios\n" +
+            "- stop single <studio_name>: Stops the specified studio\n" +
+            "- status <studio_name>: Gets the status of the specified studio\n" +
+            "- status_all: Gets the status of all studios\n" +
+            "- train_all: Starts training for all studios (with 5 minutes delay between each start)"
+        bot.sendMessage(chatId, textToSend)
     }
 
 })
