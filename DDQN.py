@@ -288,7 +288,7 @@ class DDQN():
         __targetQNetworkModel = target_qNetwork[0]
 
         # Update the Q network's weights
-        loss = computeLoss(experience, gamma, __qNetworkModel, __targetQNetworkModel)
+        loss = self.computeLoss(experience, gamma, __qNetworkModel, __targetQNetworkModel)
 
         __qNetworkModel.train()
         __targetQNetworkModel.train()
@@ -455,4 +455,7 @@ class DDQN():
 
                 plotTrainingProcess(histDf, os.path.join(self.runSavePath, f"training_process.png"))
 
-                plotGradientNorms(histDf, os.path.join(self.runSavePath, f"gradient_norms.png"))
+                try:
+                    plotGradientNorms(histDf, os.path.join(self.runSavePath, f"gradient_norms.png"))
+                except Exception as e:
+                    print("Could not plot the gradient norms. Error:", e)
