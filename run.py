@@ -166,7 +166,6 @@ while time.time() < endTime:
         "gamma": data["gamma"],
         "extra_info": "",
         "max_run_time": data["max_run_time"], # In seconds
-        "train_finish_timestamp": endTime, # In seconds
         "upload_to_cloud": data["upload_to_cloud"],
         "local_backup": data["local_backup"],
         "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
@@ -201,7 +200,7 @@ while time.time() < endTime:
             scriptArgs.extend([f"--{name}", str(value)])
 
     venvPath = str(os.getenv("python_venv_path"))
-    scriptPath = "./train_new.py"
+    scriptPath = "./train.py"
 
     command = [venvPath, scriptPath] + scriptArgs
     
