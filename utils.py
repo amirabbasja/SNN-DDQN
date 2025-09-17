@@ -602,7 +602,7 @@ def get_next_run_number_and_create_folder(continueLastRun = False, args = None):
     # Filter for folders with numeric names and find the highest number
     run_numbers = [int(f) for f in existing_folders if f.isdigit()]
 
-    if not continueLastRun:
+    if not continueLastRun or run_numbers == []:
         next_run_number = max(run_numbers) + 1 if run_numbers else 1
     else:
         next_run_number = max(run_numbers) if run_numbers else 1
