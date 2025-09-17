@@ -160,10 +160,10 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, `Starting training for all studios (0/${Object.keys(studios).length}) ...`).then(sentMsg => {lastMessageId = sentMsg.message_id;})
         let i = 1
         for(let name of Object.keys(studios)){
-            const params = { action: "start_single", credentials: JSON.stringify(studios[name])}
+            const params = { action: "train_single", credentials: JSON.stringify(studios[name])}
             runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
             await new Promise(resolve => setTimeout(resolve, 1000))
-            bot.editMessageText(`Starting all studios (${i}/${Object.keys(studios).length}) ...`, {chat_id: chatId, message_id: lastMessageId})
+            bot.sendMessage(chatId, `Starting studio ${studios[name].user} for training `).then(sentMsg => {lastMessageId = sentMsg.message_id;})
             i++
             await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000))
         }

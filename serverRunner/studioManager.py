@@ -10,6 +10,8 @@ if action == "stop_single":
     stopStudio(param)
 elif action == "start_single":
     startStudio(param)
+elif action == "train_single":
+    startTraining(param)
 elif action == "status_single":
     getStatus(param)
 else:
