@@ -17,8 +17,9 @@ def stopStudio(credentials):
     
     try:
         _studio.stop()
-    except:
-        print("Error stopping studio")
+        print(f"Success on stopping studio {credentials['user']}")
+    except Exception as e:
+        print(f"Error stopping studio. Error: {e}")
 
 def startStudio(credentials):
     _setCredentials(credentials)
@@ -42,7 +43,12 @@ def getStatus(credentials):
         create_ok = False
     )
     
-    return str(_studio.status)
+    try:
+        status = str(_studio.status)
+        print(status)
+        return status
+    except Exception as e:
+        return f"Error fetching status for {credentials['user']}: {e}"
 
 def runCommand(credentials, command):
     """

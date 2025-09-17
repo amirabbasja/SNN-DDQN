@@ -123,12 +123,12 @@ def send_telegram_message(bot_token, chat_id, message):
     return response.json()
 
 
-# Install packages
-subprocess.check_call([sys.executable, "-m", "pip", "install", "swig"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", 'gymnasium[box2d]'])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "snntorch"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "imageio"])
-subprocess.check_call([sys.executable, "-m", "pip", "install", "huggingface_hub"])
+# # Install packages
+# subprocess.check_call([sys.executable, "-m", "pip", "install", "swig"])
+# subprocess.check_call([sys.executable, "-m", "pip", "install", 'gymnasium[box2d]'])
+# subprocess.check_call([sys.executable, "-m", "pip", "install", "snntorch"])
+# subprocess.check_call([sys.executable, "-m", "pip", "install", "imageio"])
+# subprocess.check_call([sys.executable, "-m", "pip", "install", "huggingface_hub"])
 
 # IF facing box2d not found errors, despite installing it, try following two lines:
 # conda install -c conda-forge swig box2d-py
@@ -201,7 +201,7 @@ while time.time() < endTime:
             scriptArgs.extend([f"--{name}", str(value)])
 
     venvPath = str(os.getenv("python_venv_path"))
-    scriptPath = "./train.py"
+    scriptPath = "./train_new.py"
 
     command = [venvPath, scriptPath] + scriptArgs
     
