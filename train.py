@@ -47,7 +47,7 @@ if args.upload_to_cloud:
     }
 
 continueLastRun = args.continue_run
-_, runSavePath = get_next_run_number_and_create_folder(continueLastRun)
+_, runSavePath = get_next_run_number_and_create_folder(continueLastRun, args)
 
 # Copy the config file to the run folder
 shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
