@@ -120,7 +120,7 @@ class DDQN():
         self.eDecay = args["decay"]
         self.gamma = args["gamma"]
         self.miniBatchSize = args["batch"]
-        self.memorySize = args["batch"]
+        self.memorySize = args["memorySize"]
         self.agentExp = namedtuple("exp", ["state", "action", "reward", "nextState", "done"])
         self.nEpisodes = args["nEpisodes"]
         self.maxNumTimeSteps = args["maxNumTimeSteps"]
@@ -341,7 +341,7 @@ class DDQN():
                 # use ebsilon-Greedy algorithm to take the new step
                 action = self.getAction(qValueForActions, self.ebsilon, self.actionSpace, self.device).cpu().numpy()[0]
 
-                if self.debugMode and self.networkArchitecture == "snn":
+                if self.debugMode:
                     _nActionInEpisode[action] += 1
                     _gradientNorms, _layerWiseNorms = computeGradientNorms(self.qNetwork_model)
                     
@@ -370,7 +370,7 @@ class DDQN():
 
                 # Save the necessary data
                 points += reward
-                state = observation.copy()
+                self.state = observation.copy()
                 actionString += f"{action},"
 
                 # Print the training status. Print only once each second to avoid jitters.

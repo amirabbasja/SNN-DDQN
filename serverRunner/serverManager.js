@@ -81,6 +81,7 @@ function runPythonScript(loc, param, timedKill = false) {
 config({path: './serverRunner/.env'})
 const token = process.env.BOT_TOKEN
 const trgetChatId = process.env.CHAT_ID
+let infiniteTraining = false
 if (!token) {
     throw new Error("No BOT_TOKEN env variable set")
 }
@@ -91,6 +92,7 @@ if (!trgetChatId) {
 const bot = new TelegramBot(token, {polling: true})
 const studios = await readJsonFile("./studios.json")
 
+console.log("Bot started")
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id
     const text = msg.text
@@ -167,16 +169,24 @@ bot.on('message', async (msg) => {
 
         bot.editMessageText(`All studios status:\nNot running:\n   ${noRunning.join("\n   ")}\nRunning:\n   ${running.join("\n   ")}\nError:\n   ${error.join("\n   ")}`, {chat_id: chatId, message_id: lastMessageId})
     } else if (text.toLowerCase()?.startsWith("train_all")){
-        bot.sendMessage(chatId, `Starting training for all studios (0/${Object.keys(studios).length}) ...`).then(sentMsg => {lastMessageId = sentMsg.message_id;})
-        let i = 1
-        for(let name of Object.keys(studios)){
-            const params = { action: "train_single", credentials: JSON.stringify(studios[name])}
-            runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            bot.sendMessage(chatId, `Starting studio ${studios[name].user} for training `).then(sentMsg => {lastMessageId = sentMsg.message_id;})
-            i++
-            await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000))
+        infiniteTraining = true
+        while(infiniteTraining){
+            bot.sendMessage(chatId, `Starting training for all studios (0/${Object.keys(studios).length}) ...`).then(sentMsg => {lastMessageId = sentMsg.message_id;})
+            let i = 1
+            for(let name of Object.keys(studios)){
+                const params = { action: "train_single", credentials: JSON.stringify(studios[name])}
+                runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                bot.sendMessage(chatId, `Starting studio ${studios[name].user} for training `).then(sentMsg => {lastMessageId = sentMsg.message_id;})
+                i++
+                await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000))
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 4 * 60 * 60 * 1000)) // A 4 hour delay
         }
+    } else if(text.toLowerCase() === "stop_training"){
+        infiniteTraining = false
+        bot.sendMessage(chatId, "Infinite training loop stopped. Training will not continue after active sessions are done.")
     } else {
         // If the command is not recognized, send a help message
         textToSend = "Unrecognized command. Available commands:\n" +
