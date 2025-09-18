@@ -260,7 +260,7 @@ if __name__ == "__main__":
 
         # Save model weights and parameters periodically (For later use)
         if local_backup:
-            if (episode + 1) % 2 == 0:
+            if (episode + 1) % 100 == 0 or episode == 2:
                 _exp = mem.exportExperience()
                 backUpData = {
                     "episode": episode,
@@ -293,7 +293,7 @@ if __name__ == "__main__":
                 lastUploadTime = time.time()
 
         # Plot the progress
-        if (episode + 1) % 100 == 0:
+        if (episode + 1) % 100 == 0 or episode == 2:
             histDf = pd.DataFrame(lstHistory)
 
             plotEpisodeReward(histDf, os.path.join(runSavePath, f"episode_rewards.png"))
@@ -303,7 +303,6 @@ if __name__ == "__main__":
             plotGradientNorms(histDf, os.path.join(runSavePath, f"gradient_norms.png"))
 
     env.close()
-
 # from models import *
 # from collections import deque, namedtuple
 # from huggingface_hub import HfApi, login

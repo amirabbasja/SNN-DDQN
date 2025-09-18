@@ -165,6 +165,7 @@ while time.time() < endTime:
         "batch": data["batch"],
         "gamma": data["gamma"],
         "extra_info": "",
+        "train_finish_timestamp": endTime,
         "max_run_time": data["max_run_time"], # In seconds
         "upload_to_cloud": data["upload_to_cloud"],
         "local_backup": data["local_backup"],
