@@ -30,7 +30,7 @@ class qNetwork_ANN(nn.Module):
         self.model = nn.Sequential(*lstLayers)
 
     def forward(self, x):
-        return self.model(x)
+        return self.model(x), None
 
 class qNetwork_SNN(nn.Module):
     def __init__(self, layerSizes, **kwargs):
@@ -120,7 +120,6 @@ class qNetwork_SNN(nn.Module):
                     outSpikes.append(spike)
                     outPotentials.append(potentials[i])
         return torch.stack(outSpikes, dim=0).sum(dim=0), self.info
-
 
 # Utility functions for models
 
