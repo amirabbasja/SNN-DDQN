@@ -30,8 +30,8 @@ dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 session_name = os.getenv("session_name")
 
 uploadInfo = None
-uploadToCloud = args.upload_to_cloud##########
-local_backup = args.local_backup##########
+uploadToCloud = args.upload_to_cloud
+local_backup = args.local_backup
 lastUploadTime = 0
 if uploadToCloud:
     # Login to huggingface
@@ -51,7 +51,7 @@ if uploadToCloud:
     }
 
 continueLastRun = args.continue_run
-_, runSavePath = get_next_run_number_and_create_folder(continueLastRun, args)
+_, runSavePath = get_next_run_number_and_create_folder(continueLastRun)
 
 # Copy the config file to the run folder
 shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
@@ -60,41 +60,45 @@ if __name__ == "__main__":
     runStartTime = time.time() # The time the training begun
     maxRunTime = runStartTime + args.max_run_time
 
-    # Making the environment ##########
-    NUM_ENVS = args.agents ##########
-    env = gym.make("LunarLander-v3") # Use render_mode = "human" to render each episode ##########
+    # Making the environment
+    s0 = 90 * np.pi / 180  # Initial angle in degrees
+    v0 = 0.8  # Initial angular velocity in rad/s
+    NUM_ENVS = args.agents
+    env = gym.make("LunarLander-v3") # Use render_mode = "human" to render each episode
 
-    state, info = env.reset() # Get a sample state of the environment ##########
-    stateSize = env.observation_space.shape # Number of variables to define current step ##########
-    nActions = env.action_space.n # Number of actions ##########
-    actionSpace = np.arange(nActions).tolist() ##########
-    nObs = len(state) # Number of features ##########
+    # env = gym.make("LunarLander-v3") # Use render_mode = "human" to render each episode
+    state, info = env.reset() # Get a sample state of the environment
+    stateSize = [2] # Number of variables to define current step
+    stateSize = env.observation_space.shape # Number of variables to define current step
+    nActions = env.action_space.n # Number of actions
+    actionSpace = np.arange(nActions).tolist()
+    nObs = len(state) # Number of features
 
     # Set pytorch parameters: The device (CPU or GPU) and data types
-    __device = torch.device("cuda") if torch.cuda.is_available() else torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")##########
-    __dtype = torch.float##########
+    __device = torch.device("cuda") if torch.cuda.is_available() else torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
+    __dtype = torch.float
 
-    # Model parameters##########
-    projectName = args.name##########
-    hiddenNodes = args.hidden_layers##########
-    learningRate = args.learning_rate##########
-    eDecay = args.decay##########
-    miniBatchSize = args.batch # The length of mini-batch that is used for training##########
-    gamma = args.gamma # The discount factor##########
-    extraInfo = args.extra_info##########
-    continueLastRun = args.continue_run##########
-    debugMode = args.debug##########
-    stopLearningPercent = args.stop_learning_at_win_percent##########
+    # Model parameters
+    projectName = args.name
+    hiddenNodes = args.hidden_layers
+    learningRate = args.learning_rate
+    eDecay = args.decay
+    miniBatchSize = args.batch # The length of mini-batch that is used for training
+    gamma = args.gamma # The discount factor
+    extraInfo = args.extra_info
+    continueLastRun = args.continue_run
+    debugMode = args.debug
+    stopLearningPercent = args.stop_learning_at_win_percent
 
-    # handle the save location##########
-    backUpData = {}##########
-    modelDetails = f"{'_'.join([str(l) for l in hiddenNodes])}_{learningRate}_{eDecay}_{miniBatchSize}_{gamma}_{NUM_ENVS}_{extraInfo}"##########
+    # handle the save location
+    backUpData = {}
+    modelDetails = f"{'_'.join([str(l) for l in hiddenNodes])}_{learningRate}_{eDecay}_{miniBatchSize}_{gamma}_{NUM_ENVS}_{extraInfo}"
     
-    # Set the upload directory name##########
-    if uploadToCloud:##########
-        uploadInfo["dirName"] = f"./{session_name}-{projectName}_{modelDetails}"##########
+    # Set the upload directory name
+    if uploadToCloud:
+        uploadInfo["dirName"] = f"./{session_name}-{projectName}_{modelDetails}"
     
-    saveFileName = f"{projectName}_{modelDetails}.pth"##########
+    saveFileName = f"{projectName}_{modelDetails}.pth"
     
     # Make the model objects
     if args.architecture == "ann":
@@ -120,8 +124,8 @@ if __name__ == "__main__":
     lstHistory = None
 
     # Making the memory buffer object
-    memorySize = 100_000 # The length of the entire memory##########
-    mem = ReplayMemory(memorySize, __dtype, __device) ##########
+    memorySize = 100_000 # The length of the entire memory
+    mem = ReplayMemory(memorySize, __dtype, __device)
 
     if continueLastRun and os.path.isfile(os.path.join(runSavePath, saveFileName)):
         # Load necessary parameters to resume the training from most recent run 
@@ -141,22 +145,23 @@ if __name__ == "__main__":
     # Start the timer
     tstart = time.time()
 
-    # The experience of the agent is saved as a named tuple containing various variables##########
-    agentExp = namedtuple("exp", ["state", "action", "reward", "nextState", "done"])##########
+    # The experience of the agent is saved as a named tuple containing various variables
+    agentExp = namedtuple("exp", ["state", "action", "reward", "nextState", "done"])
 
     # Parameters
-    nEpisodes = 15000 # Number of learning episodes##########
-    maxNumTimeSteps = 1000 # The number of time step in each episode##########
-    ebsilon = 1 if startEbsilon == None else startEbsilon # The starting  value of ebsilon##########
-    ebsilonEnd   = .01 # The finishing value of ebsilon##########
-    eDecay = eDecay # The rate at which ebsilon decays##########
-    numUpdateTS = 4 # Frequency of time steps to update the NNs##########
-    numP_Average = 100 # The number of previous episodes for calculating the average episode reward##########
+    nEpisodes = 15000 # Number of learning episodes
+    maxNumTimeSteps = 1000 # The number of time step in each episode
+    ebsilon = 1 if startEbsilon == None else startEbsilon # The starting  value of ebsilon
+    ebsilonEnd   = .01 # The finishing value of ebsilon
+    eDecay = eDecay # The rate at which ebsilon decays
+    numUpdateTS = 4 # Frequency of time steps to update the NNs
+    numP_Average = 100 # The number of previous episodes for calculating the average episode reward
 
     # Variables for saving the required data for later analysis
     episodePointHist = [] # For saving each episode's point for later demonstration
     episodeHistDf = None
     lstHistory = [] if lstHistory == None else lstHistory
+    initialCond = None # Initial condition (state) of the episode
     epPointAvg = -999999 if len(lstHistory) == 0 else pd.DataFrame(lstHistory).iloc[-numP_Average:]["points"].mean()
     latestCheckpoint = 0
     _lastPrintTime = 0
@@ -167,6 +172,7 @@ if __name__ == "__main__":
         state, info = env.reset(seed = initialSeed)
         points = 0
         actionString = ""
+        initialCond = state
 
         tempTime = time.time()
 
@@ -217,11 +223,11 @@ if __name__ == "__main__":
                 _lastPrintTime = time.time()
                 print(f"ElapsedTime: {int(time.time() - tstart): <5}s | Episode: {episode: <5} | Timestep: {t: <5} | The average of the {numP_Average: <5} episodes is: {int(epPointAvg): <5}")
                 print(f"Latest chekpoint: {latestCheckpoint} | Speed {t/(time.time()-tempTime+1e-9):.1f} tps | ebsilon: {ebsilon:.3f} ")
-                print(f"Remaining time of this run: {maxRunTime - time.time():.1f}s")
+                print(f"Remaining time of this run: {maxRunTime - time.time():.1f}s | Remaining time of all trainings: {args.train_finish_timestamp - time.time():.1f}s")
                 print(f"Memory details: {mem.len}")
                 print("===========================")
 
-            if terminated or truncated or maxRunTime < time.time() : break
+            if terminated or truncated or maxRunTime < time.time() or args.train_finish_timestamp < time.time(): break
 
         _last100WinPercentage = np.sum([1 if exp["finalEpisodeReward"] > 75 else 0 for exp in lstHistory[-100:]]) / 100
 
@@ -254,7 +260,7 @@ if __name__ == "__main__":
 
         # Save model weights and parameters periodically (For later use)
         if local_backup:
-            if (episode + 1) % 100 == 0 or episode == 2:
+            if (episode + 1) % 2 == 0:
                 _exp = mem.exportExperience()
                 backUpData = {
                     "episode": episode,
@@ -287,7 +293,7 @@ if __name__ == "__main__":
                 lastUploadTime = time.time()
 
         # Plot the progress
-        if (episode + 1) % 100 == 0 or episode == 2:
+        if (episode + 1) % 100 == 0:
             histDf = pd.DataFrame(lstHistory)
 
             plotEpisodeReward(histDf, os.path.join(runSavePath, f"episode_rewards.png"))
