@@ -192,10 +192,11 @@ bot.on('message', async (msg) => {
         textToSend = "Unrecognized command. Available commands:\n" +
             "- list: Lists all available studios\n" +
             "- stop single <studio_name>: Stops the specified studio\n" +
+            "- stop_all: Stops all running studios\n" +
             "- status <studio_name>: Gets the status of the specified studio\n" +
             "- status_all: Gets the status of all studios\n" +
-            "- train_all: Starts training for all studios (with 5 minutes delay between each start)"
+            "- train_all: Starts training for all studios (with 5 minutes delay between each start) + \n"
+            "- stop_training: Stops further initiations of training"
         bot.sendMessage(chatId, textToSend)
     }
-
 })
