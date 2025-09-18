@@ -157,6 +157,147 @@ class ReplayMemory(object):
             # done = tf.convert_to_tensor(np.array([e.done for e in miniBatch if e != None]).astype(np.uint8), dtype=tf.float32)
         return tuple((state, action, reward, nextState, done))
 
+
+
+
+
+def getAction(qVal: list, e:float, actionSpace: list, device: torch.device ) -> int:
+    """
+    Gets the action via an epsilon-greedy algorithm. This entire action state depends on the env.
+    With a probability of epsilon, a random choice will be picked, else the action with
+    the greatest Q value will be picked.
+
+    Args:
+        qVal: nn.Tensor. The q value of actions of each agent. Axis 0 should be for
+            agents.
+        e: float: The epsilon which represents the probability of a random action
+        actionSpace: list: A list of available actions to take. For example, the 
+            available actions possible for LunarLander are as follows:
+            [1,2,3,4] => [DoNothing, leftThruster, MainThruster, RightThruster]
+        device: torch.device: The device to store the data (CPU or GPU)
+
+    Returns:
+        action: int: 0 for doing nothing, and 1 for left thruster, 2 form main thruster
+            and 3 for right thruster.
+    """
+    rndMask = torch.rand(qVal.shape[0], device = device) < e
+    actions = torch.zeros(qVal.shape[0], dtype=torch.long, device = device)
+
+    # Get random actions
+    actions[rndMask] = torch.randint(0, len(actionSpace), (int(rndMask.sum().item()),), device = device)
+    
+    # Get optimal actions
+    actions[~rndMask] = torch.argmax(qVal[~rndMask], dim = 1)
+
+    return actions
+
+def updateNetworks(timeStep: int, replayMem: ReplayMemory, miniBatchSize: int, C: int) -> bool:
+    """
+    Determines if the neural network (qNetwork and target_qNetwork) weights are to be updated.
+    The update happens C time steps apart. for performance reasons.
+
+    Args:
+        timeStep: int: The time step of the current episode
+        replayMem: deque: A double edged queue containing the experiences as named tuples.
+            the named tuples should be as follows: ["state", "action", "reward", "nextState", "done"]
+
+    Returns:
+        A boolean, True for update and False to not update.
+    """
+
+    return True if ((timeStep+1) % C == 0 and miniBatchSize < replayMem.len) else False
+
+def decayEbsilon(currE: float, rate:float, minE:float) -> float:
+    """
+    Decreases ebsilon each time called. It multiplies current ebsilon to decrease rate.
+    The decreasing is continued until reaching minE.
+    """
+    return(max(currE*rate, minE))
+
+def computeLoss(experiences:tuple, gamma:float, qNetwork, target_qNetwork):
+    """
+    Computes the loss between y targets and Q values. For target network, the Q values are
+    calculated using Bellman equation. If the reward of current step is R_i, then y = R_i
+    if the episode is terminated, if not, y = R_i + gamma * Q_hat(i+1) where gamma is the
+    discount factor and Q_hat is the predicted return of the step i+1 with the
+    target_qNetwork.
+
+    For the primary Q network, Q values are acquired from the step taken in the episode
+    experiences (Not necessarily MAX(Q value)).
+
+    Args:
+        experiences (Tuple): A tuple containing experiences as pytorch tensors.
+        gamma (float): The discount factor.
+        qNetwork (pytorch NN): The neural network for predicting the Q.
+        target_qNetwork (pytorch NN): The neural network for predicting the target-Q.
+
+    Returns:
+        loss: float: The Mean squared errors (AKA. MSE) of the Qs.
+    """
+    # Unpack the experience mini-batch
+    state, action, reward, nextState, done = experiences
+
+    # with torch.no_grad():
+    target_qNetwork.eval()
+    qNetwork.eval()
+
+    # To implement the calculation scheme explained in comments, we multiply Qhat by (1-done).
+    # If the episode has terminated done == True so (1-done) = 0.
+    _targetQValues, _ = target_qNetwork(nextState)
+    Qhat = torch.amax(_targetQValues, dim = 1)
+    yTarget = reward + gamma *  Qhat * ((1 - done)) # Using the bellman equation
+
+    # IMPORTANT: When getting qValues, we have to account for the ebsilon-greedy algorithm as well.
+    # This is why we dont use max(qValues in each state) but instead we use the qValues of the taken
+    # action in that step.
+    qValues, _ = qNetwork(state)
+
+    qValues = qValues[torch.arange(state.shape[0], dtype = torch.long), action]
+
+    # Calculate the loss
+    loss = nn.functional.mse_loss(qValues, yTarget)
+
+    return loss
+
+def fitQNetworks(experience, gamma, qNetwork, target_qNetwork):
+    """
+    Updates the weights of the neural networks with a custom training loop. The target network is
+    updated by a soft update mechanism.
+
+    Args:
+        experience (tuple): The data for training networks. This data has to be passed with
+            replayMemory.sample() function which returns a tuple of tensorflow tensors in
+            the following order: state, action, reward, nextState, done)
+        gamma (float): The learning rate.
+        qNetwork, target_qNetwork (list): A list of pytorch model and its respective
+            optimizer. The first member should be the model, second one its optimizer
+
+    Returns:
+        None
+    """
+    __qNetworkModel = qNetwork[0]
+    __qNetworkOptim = qNetwork[1]
+    __targetQNetworkModel = target_qNetwork[0]
+
+    # Update the Q network's weights
+    loss = computeLoss(experience, gamma, __qNetworkModel, __targetQNetworkModel)
+
+    __qNetworkModel.train()
+    __targetQNetworkModel.train()
+
+    __qNetworkOptim.zero_grad()
+    loss.backward()
+    __qNetworkOptim.step()
+
+    # Update the target Q network's weights using soft updating method
+    for targetParams, primaryParams in zip(__targetQNetworkModel.parameters(), __qNetworkModel.parameters()):
+        targetParams.data.copy_(targetParams.data * (1 - .001) + primaryParams.data * .001)
+
+
+
+
+
+
 def renderEpisode(initialState: int, actions:str, envName:str, delay:float = .02) -> None:
     """
     Renders the previously done episode so the user can see what happened. We use Gym to
