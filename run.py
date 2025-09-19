@@ -164,13 +164,31 @@ def update_run_file(repo_name, branch='main'):
         
         # Restart the script with the updated version
         # print("Restarting with updated version...")
-        os.execv(sys.executable, [sys.executable, current_file] + sys.argv[1:])
+        subprocess.run(sys.executable, [sys.executable, current_file] + sys.argv[1:])
         
     except Exception as e:
         print(f"Error updating run.py: {str(e)}")
         # Clean up temporary file if it exists
         if os.path.exists(temp_file):
             os.remove(temp_file)
+        return False
+
+def isValidPath(string):
+    """
+    Checks to see if a string is a valid file path
+
+    Args: 
+        string (str): The string to check
+    Returns:
+        bool: True if valid path, False otherwise
+    """
+    if not string:
+        return False
+    try:
+        # Normalize the path to check its validity
+        os.path.normpath(string)
+        return True
+    except (ValueError, OSError):
         return False
 
 def send_telegram_message(bot_token, chat_id, message):
@@ -183,7 +201,6 @@ def send_telegram_message(bot_token, chat_id, message):
     }
     response = requests.post(url, data=payload)
     return response.json()
-
 
 # # Install packages
 # subprocess.check_call([sys.executable, "-m", "pip", "install", "swig"])
@@ -209,6 +226,21 @@ if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None:
     else:
         # Then update other files (excluding run.py)
         download_repo_files(os.getenv("code_base_link"), "master", ["run.py"], os.path.dirname(os.path.abspath(__file__)))
+
+# Check to see if any new arguments were passed
+scriptPath = "./train.py" # Default
+if 1 < len(sys.argv):
+    if(not isValidPath(sys.argv[1])):
+        print(f"Invalid path provided: {sys.argv[1]}")
+        sys.exit(1)
+    
+    if not os.path.exists(sys.argv[1]):
+        print(f"Provided path doesn't exist: {sys.argv[1]}")
+        sys.exit(1)
+    
+    # Override default path
+    scriptPath = sys.argv[1]
+    print(f"Using script path: {scriptPath}")
 
 # Open and read run configuration
 assert os.path.exists("conf.json"), "conf.json file doesn't exist"
@@ -271,7 +303,6 @@ while time.time() < endTime:
             scriptArgs.extend([f"--{name}", str(value)])
 
     venvPath = str(os.getenv("python_venv_path"))
-    scriptPath = "./train.py"
 
     command = [venvPath, scriptPath] + scriptArgs
     
