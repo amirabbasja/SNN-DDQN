@@ -141,7 +141,9 @@ def update_run_file(repo_name, branch='main'):
         if new_content == current_content:
             print("run.py is already up to date.")
             return False
-        
+        else:
+            print("New version of run.py found. Updating...")
+        exit()
         # Write to temporary file first
         with open(temp_file, 'wb') as f:
             f.write(new_content)
