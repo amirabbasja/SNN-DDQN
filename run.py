@@ -153,7 +153,7 @@ def update_run_file(repo_name, branch='main'):
             return False
         
         print("Meaningful differences found in run.py. Updating...")
-        exit()
+        
         # Write to temporary file first
         with open(temp_file, 'wb') as f:
             f.write(new_content)
