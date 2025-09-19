@@ -69,9 +69,14 @@ def runCommand(credentials, command):
     except:
         return False
 
-def startTraining(credentials):
+def startTraining(credentials, forceNewRun = False):
     """
     Starts a training bout by chekcing the status of the studio and running the command
+
+    Args:
+        credentials (dict): Dictionary containing the studio credentials
+        forceNewRun (bool, optional): If True, forces a new run by adding the --forcenewrun 
+            flag to the command. Defaults to False.
     """
 
     _status = getStatus(credentials)
@@ -95,9 +100,8 @@ def startTraining(credentials):
     time.sleep(10)
 
     # If instructed to force a new run, modify the command and add a flag
-    if("forceNewRun" in credentials):
-        if(credentials["forceNewRun"]):
-            credentials["commandToRun"] = credentials["commandToRun"] + " --forcenewrun"
+    if(forceNewRun):
+        credentials["commandToRun"] = credentials["commandToRun"] + " --forcenewrun"
 
     # Run the command
     runCommand(credentials, credentials["commandToRun"])
