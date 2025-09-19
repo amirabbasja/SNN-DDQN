@@ -163,7 +163,7 @@ def update_run_file(repo_name, branch='main'):
         print("run.py has been updated successfully with meaningful changes.")
         
         # Restart the script with the updated version
-        print("Restarting with updated version...")
+        # print("Restarting with updated version...")
         os.execv(sys.executable, [sys.executable, current_file] + sys.argv[1:])
         
     except Exception as e:
