@@ -111,6 +111,56 @@ def download_repo_files(repo_name, branch='main', exclude_files=None, local_dir=
     
     return results
 
+def update_run_file(repo_name, branch='main'):
+    """
+    Downloads and updates the run.py file itself from the repository.
+    Returns True if the file was updated, False if no update was needed.
+    """
+    current_file = os.path.abspath(__file__)
+    temp_file = current_file + ".tmp"
+    
+    api_base = f"https://api.github.com/repos/{repo_name}"
+    file_url = f"{api_base}/contents/run.py?ref={branch}"
+    
+    try:
+        # Download the latest run.py
+        file_response = requests.get(file_url)
+        file_response.raise_for_status()
+        file_data = file_response.json()
+        
+        if file_data.get('encoding') == 'base64':
+            new_content = base64.b64decode(file_data['content'])
+        else:
+            new_content = file_data.get('content', '').encode('utf-8')
+        
+        # Read current file content
+        with open(current_file, 'rb') as f:
+            current_content = f.read()
+        
+        # Compare content
+        if new_content == current_content:
+            print("run.py is already up to date.")
+            return False
+        
+        # Write to temporary file first
+        with open(temp_file, 'wb') as f:
+            f.write(new_content)
+        
+        # Replace the current file
+        os.replace(temp_file, current_file)
+        print("run.py has been updated successfully.")
+        
+        # Restart the script with the updated version
+        print("Restarting with updated version...")
+        os.execv(sys.executable, [sys.executable, current_file] + sys.argv[1:])
+        
+    except Exception as e:
+        print(f"Error updating run.py: {str(e)}")
+        # Clean up temporary file if it exists
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        return False
+
 def send_telegram_message(bot_token, chat_id, message):
     
     """Send a message to a Telegram user/chat"""
@@ -138,7 +188,15 @@ def send_telegram_message(bot_token, chat_id, message):
 load_dotenv()
 if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None:
     print("Updating codebase...")
-    download_repo_files(os.getenv("code_base_link"), "master", ["run.py"], os.path.dirname(os.path.abspath(__file__)))
+    
+    # First update run.py itself
+    print("Checking for run.py updates...")
+    if update_run_file(os.getenv("code_base_link"), "master"):
+        # If updated, the script will restart and we won't reach here
+        pass
+    else:
+        # Then update other files (excluding run.py)
+        download_repo_files(os.getenv("code_base_link"), "master", ["run.py"], os.path.dirname(os.path.abspath(__file__)))
 
 # Open and read run configuration
 assert os.path.exists("conf.json"), "conf.json file doesn't exist"
