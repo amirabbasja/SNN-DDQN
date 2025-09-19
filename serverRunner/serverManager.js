@@ -196,14 +196,15 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, "Infinite training loop stopped. Training will not continue after active sessions are done.")
     } else {
         // If the command is not recognized, send a help message
-        textToSend = "Unrecognized command. Available commands:\n" +
-            "- list: Lists all available studios\n" +
-            "- stop single <studio_name>: Stops the specified studio\n" +
-            "- stop_all: Stops all running studios\n" +
-            "- status <studio_name>: Gets the status of the specified studio\n" +
-            "- status_all: Gets the status of all studios\n" +
-            "- train_all: Starts training for all studios (with 5 minutes delay between each start) + \n"
-            "- stop_training: Stops further initiations of training"
-        bot.sendMessage(chatId, textToSend)
+        textToSend = "<b>Available commands </b>\n\n" +
+            "- <code>list</code>: <i>Lists all available studios </i>\n" +
+            "- <code>stop single studio_name</code>: <i>Stops the specified studio </i>\n" +
+            "- <code>stop_all</code>: <i>Stops all running studios </i>\n" +
+            "- <code>status studio_name</code>: <i>Gets the status of the specified studio </i>\n" +
+            "- <code>status_all</code>: <i>Gets the status of all studios </i>\n" +
+            "- <code>train_all</code>: <i>Starts training for all studios (with 5 minutes delay between each start)  </i>+ \n" +
+            "- <code>train_all force_new_run</code>: <i>Starts training for all studios with a forced new run in each server </i> \n" +
+            "- <code>stop_training</code>: <i>Stops further initiations of training </i>"
+        bot.sendMessage(chatId, textToSend, { parse_mode: 'HTML' })
     }
 })
