@@ -264,7 +264,7 @@ while time.time() < endTime:
     # Run parameters
     argsDict = {
         "name": data["name"],
-        "continue_run": data["continue_run"] or forceNewRun, # If --forcenewrun was passed, override config
+        "continue_run": data["continue_run"], # If --forcenewrun was passed, override config
         "agents": data["agents"],
         "hidden_layers": data["hidden_layers"],
         "learning_rate": data["learning_rate"],
@@ -282,6 +282,10 @@ while time.time() < endTime:
         "snn_tSteps": data["snn_tSteps"],
         "snn_beta": data["snn_beta"]
     }
+
+    # Override continue_run if needed
+    if forceNewRun:
+        argsDict["continue_run"] = False
 
     # For passing the args to the script
     scriptArgs = []
