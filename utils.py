@@ -731,9 +731,15 @@ def plot_action_distribution(action_counts, ax=None):
     plt.tight_layout()
     return fig, ax
 
-def get_next_run_number_and_create_folder(continueLastRun = False):
+def get_next_run_number_and_create_folder(continueLastRun = False, args = None):
     """
     Searches for existing folders in runs_data and returns the next available run number and folder path
+
+    Args:
+        continueLastRun (bool): If True, continues the last run instead of creating a new one
+        args (Namespace): The configuration arguments. To check if the passed configuration 
+            for the training is the same as the last run. If not, a new folder will be created 
+            even if continueLastRun is True.
     """
     # Define the runs_data directory path
     runs_data_dir = "runs_data"
@@ -743,23 +749,33 @@ def get_next_run_number_and_create_folder(continueLastRun = False):
         os.makedirs(runs_data_dir)
     
     # Get list of existing folders in runs_data
-    existing_folders = [f for f in os.listdir(runs_data_dir) 
-                    if os.path.isdir(os.path.join(runs_data_dir, f))]
-    
+    existing_folders = [f for f in os.listdir(runs_data_dir) if os.path.isdir(os.path.join(runs_data_dir, f))]
+
     # Filter for folders with numeric names and find the highest number
     run_numbers = [int(f) for f in existing_folders if f.isdigit()]
 
-    if not continueLastRun:
+    if not continueLastRun or run_numbers == []:
         next_run_number = max(run_numbers) + 1 if run_numbers else 1
     else:
         next_run_number = max(run_numbers) if run_numbers else 1
+
+        # Check if the configuration has changed
+        if args is not None:
+            with open(os.path.join(runs_data_dir, str(next_run_number), "conf.json"), 'r') as file:
+                pastConfig = json.load(file)
+                currentConfig = vars(args)
+
+                for key in currentConfig.keys():
+                    if key not in pastConfig or pastConfig[key] != currentConfig[key]:
+                        print(f"Configuration for '{key}' has changed from {pastConfig.get(key)} to {currentConfig[key]}. Creating a new run folder.")
+                        next_run_number += 1
+                        break
     
     # Create new folder with the next run number
     new_folder_path = os.path.join(runs_data_dir, str(next_run_number))
     os.makedirs(new_folder_path, exist_ok=True)
     
     return next_run_number, new_folder_path
-
 
 # Utility functions for plotting the training history and progress
 

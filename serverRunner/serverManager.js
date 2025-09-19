@@ -133,6 +133,7 @@ bot.on('message', async (msg) => {
             bot.editMessageText(`Studio ${studios[studioName].user} stopped`, {chat_id: chatId, message_id: lastMessageId})
         }
         bot.sendMessage(chatId, `All studios stopped.`)
+        infiniteTraining = false
     } else if(text.toLowerCase()?.startsWith("status") && !text.toLowerCase()?.startsWith("status_all")){
         // gets status for a single studop
         const parts = text.split(" ")
