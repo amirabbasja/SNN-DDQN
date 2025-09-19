@@ -228,6 +228,11 @@ if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None:
         download_repo_files(os.getenv("code_base_link"), "master", ["run.py"], os.path.dirname(os.path.abspath(__file__)))
 
 # Check to see if any new arguments were passed
+forceNewRun = False
+if("--forcenewrun" in sys.argv):
+    forceNewRun = True
+    sys.argv.remove("--forcenewrun")
+
 scriptPath = "./train.py" # Default
 if 1 < len(sys.argv):
     if(not isValidPath(sys.argv[1])):
@@ -259,7 +264,7 @@ while time.time() < endTime:
     # Run parameters
     argsDict = {
         "name": data["name"],
-        "continue_run": data["continue_run"],
+        "continue_run": data["continue_run"] or forceNewRun, # If --forcenewrun was passed, override config
         "agents": data["agents"],
         "hidden_layers": data["hidden_layers"],
         "learning_rate": data["learning_rate"],

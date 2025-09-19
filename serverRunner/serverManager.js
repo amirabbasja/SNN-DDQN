@@ -170,18 +170,24 @@ bot.on('message', async (msg) => {
 
         bot.editMessageText(`All studios status:\nNot running:\n   ${noRunning.join("\n   ")}\nRunning:\n   ${running.join("\n   ")}\nError:\n   ${error.join("\n   ")}`, {chat_id: chatId, message_id: lastMessageId})
     } else if (text.toLowerCase()?.startsWith("train_all")){
+        let forceNewRun = false
+        if("forece_new_run" in text.toLowerCase()){ forceNewRun = true }
+
         infiniteTraining = true
         while(infiniteTraining){
             bot.sendMessage(chatId, `Starting training for all studios (0/${Object.keys(studios).length}) ...`).then(sentMsg => {lastMessageId = sentMsg.message_id;})
             let i = 1
             for(let name of Object.keys(studios)){
-                const params = { action: "train_single", credentials: JSON.stringify(studios[name])}
+                const params = { action: "train_single", credentials: JSON.stringify(studios[name]), forceNewRun: forceNewRun}
                 runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
                 await new Promise(resolve => setTimeout(resolve, 1000))
                 bot.sendMessage(chatId, `Starting studio ${studios[name].user} for training `).then(sentMsg => {lastMessageId = sentMsg.message_id;})
                 i++
                 await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000))
             }
+
+            forceNewRun = false // Only for the first run
+            bot.sendMessage(chatId, `All studios started for training. Waiting 4 hours before next training round...`)
 
             await new Promise(resolve => setTimeout(resolve, 4 * 60 * 60 * 1000)) // A 4 hour delay
         }

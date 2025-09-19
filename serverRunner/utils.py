@@ -89,8 +89,15 @@ def startTraining(credentials):
             time.sleep(10)
         except:
             pass
-
+    
+    # Start the studio
     startStudio(credentials)
     time.sleep(10)
 
+    # If instructed to force a new run, modify the command and add a flag
+    if("forceNewRun" in credentials):
+        if(credentials["forceNewRun"]):
+            credentials["commandToRun"] = credentials["commandToRun"] + " --forcenewrun"
+
+    # Run the command
     runCommand(credentials, credentials["commandToRun"])
