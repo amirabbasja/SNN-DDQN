@@ -137,12 +137,22 @@ def update_run_file(repo_name, branch='main'):
         with open(current_file, 'rb') as f:
             current_content = f.read()
         
-        # Compare content
-        if new_content == current_content:
-            print("run.py is already up to date.")
+        # Compare content - decode to strings for better diff analysis
+        new_content_str = new_content.decode('utf-8', errors='ignore')
+        current_content_str = current_content.decode('utf-8', errors='ignore')
+        
+        # Remove empty lines and whitespace for comparison
+        new_clean = [line.strip() for line in new_content_str.splitlines() if line.strip()]
+        current_clean = [line.strip() for line in current_content_str.splitlines() if line.strip()]
+        
+        # Check if there are meaningful differences
+        has_meaningful_differences = new_clean != current_clean
+        
+        if not has_meaningful_differences:
+            print("run.py is already up to date (no meaningful differences).")
             return False
-        else:
-            print("New version of run.py found. Updating...")
+        
+        print("Meaningful differences found in run.py. Updating...")
         exit()
         # Write to temporary file first
         with open(temp_file, 'wb') as f:
@@ -150,7 +160,7 @@ def update_run_file(repo_name, branch='main'):
         
         # Replace the current file
         os.replace(temp_file, current_file)
-        print("run.py has been updated successfully.")
+        print("run.py has been updated successfully with meaningful changes.")
         
         # Restart the script with the updated version
         print("Restarting with updated version...")
