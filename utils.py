@@ -834,11 +834,12 @@ def plotTrainingProcess(df, saveLoc):
     ax3.legend()
 
     # Plot
-    ax4.set_title("Layer-wise Spikes")
-    ax4.set_yscale('log')
-    for i in range(len(layerWiseSpikes)):
-        ax4.scatter(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output', s = 3)
-    ax4.legend()
+    if 'spikesPerLayer' not in df.columns:
+        ax4.set_title("Layer-wise Spikes")
+        ax4.set_yscale('log')
+        for i in range(len(layerWiseSpikes)):
+            ax4.scatter(df.episode, layerWiseSpikes[i], label=f'layer {i}' if i != len(layerWiseSpikes) - 1 else 'Output', s = 3)
+        ax4.legend()
 
     # Plot
     plot_action_distribution(actionCounts, ax5)
