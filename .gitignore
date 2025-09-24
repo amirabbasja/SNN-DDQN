@@ -5,3 +5,4 @@ __pycache__
 conf.json
 runs_data/*
 studios.json
+node_modules
