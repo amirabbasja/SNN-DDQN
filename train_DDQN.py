@@ -1,32 +1,19 @@
 from models import *
-from collections import deque, namedtuple
 from huggingface_hub import HfApi, login
 import os
-import argparse
 from utils import *
-from IPython.display import clear_output
-
-import sys
-import dotenv
-from pprint import pprint
-
-from tqdm import tqdm
-import pandas as pd
-import random, imageio, time, copy
 import numpy as np
-import pickle
 import gymnasium as gym
-import matplotlib.pyplot as plt
-
-import torch.nn as nn
 import torch
-
 from DDQN import DDQN
 
 # Parse model arguments
 parser = modelParamParser()
 args, unknown = parser.parse_known_args()
 
+# Deserialize the JSON strings into dictionaries
+args.network_options = json.loads(args.network_options)
+args.algorithm_options = json.loads(args.algorithm_options)
 
 uploadInfo = None
 if args.upload_to_cloud:
@@ -60,22 +47,22 @@ nActions = env.action_space.n # Number of actions
 actionSpace = np.arange(nActions).tolist() 
 
 # Make the model objects
-if args.architecture == "ann":
-    qNetwork_model = qNetwork_ANN([stateSize[0], *args.hidden_layers, nActions])
-    targetQNetwork_model = qNetwork_ANN([stateSize[0], *args.hidden_layers, nActions])
-elif args.architecture == "snn":
-    qNetwork_model = qNetwork_SNN([stateSize[0], *args.hidden_layers, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps, DEBUG = args.debug)
-    targetQNetwork_model = qNetwork_SNN([stateSize[0], *args.hidden_layers, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps, DEBUG = args.debug)
+if args.network == "ann":
+    qNetwork_model = qNetwork_ANN([stateSize[0], *args.network_options["hidden_layers"], nActions])
+    targetQNetwork_model = qNetwork_ANN([stateSize[0], *args.network_options["hidden_layers"], nActions])
+elif args.network == "snn":
+    qNetwork_model = qNetwork_SNN([stateSize[0], *args.network_options["hidden_layers"], nActions], beta = args.network_options["snn_beta"], tSteps = args.network_options["snn_tSteps"], DEBUG = args.debug)
+    targetQNetwork_model = qNetwork_SNN([stateSize[0], *args.network_options["hidden_layers"], nActions], beta = args.network_options["snn_beta"], tSteps = args.network_options["snn_tSteps"], DEBUG = args.debug)
 else:
-    raise ValueError(f"Unknown architecture: {args.architecture}")
+    raise ValueError(f"Unknown network: {args.network}")
 
 # Two models should have identical weights initially
 targetQNetwork_model.load_state_dict(qNetwork_model.state_dict())
 
 # TODO: Add gradient clipping to the optimizer for avoiding exploding gradients
 # Suitable optimizer for gradient descent
-optimizer_main = torch.optim.Adam(qNetwork_model.parameters(), lr = args.learning_rate)
-optimizer_target = torch.optim.Adam(targetQNetwork_model.parameters(), lr = args.learning_rate)
+optimizer_main = torch.optim.Adam(qNetwork_model.parameters(), lr = args.algorithm_options["learning_rate"])
+optimizer_target = torch.optim.Adam(targetQNetwork_model.parameters(), lr = args.algorithm_options["learning_rate"])
 
 _networks = {
     "qNetwork_model": qNetwork_model,
@@ -84,21 +71,16 @@ _networks = {
     "optimizer_target": optimizer_target
 }
 
-
 args = vars(args) # Convert to dictionary
-args["nEpisodes"] = 15000 
-args["maxNumTimeSteps"] = 1000
 args["action_space"] = actionSpace
 args["env"] = env
 args["stateSize"] = stateSize
 
-args["memorySize"] = 100000
-args["startEbsilon"] = 1.0
-args["ebsilonEnd"] = 0.01
-args["numUpdateTS"] = 4
-args["agents"] = 1  # For now, only 1 agent is supported
+if args["algorithm"] != "DDQN":
+    raise ValueError(f"Algorithm should be DDQN, not {args['algorithm']}")
+
 args["uploadInfo"] = uploadInfo
 args["run_save_path"] = runSavePath
 
-agent = DDQN("HomePC", args, _networks)
+agent = DDQN(os.getenv("session_name"), args, _networks)
 agent.train()

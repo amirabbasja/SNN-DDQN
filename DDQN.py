@@ -19,54 +19,50 @@ class DDQN():
             
             args (dict): A dictionary containing hyperparameters and configurations. Must include:
                 - General parameters:
-                - name: Project name (Different from session name) +
-                - hidden_layers: List of integers defining the number of nodes in each hidden layer +
-                - learning_rate: Learning rate for the optimizer +
-                - extra_info: Additional information as a string +
-                - continue_run: Boolean flag to continue from last checkpoint +
-                - debug: Boolean flag for debug mode, in which, extra data is saved in a directory for debugging purposes +
-                - stop_learning_at_win_percent: Percentage threshold of latest 100 won episodes where we stop updating networks +
-                - upload_to_cloud: Boolean flag to upload the model and training data to the cloud +
-                - local_backup: Boolean flag to save a local backup of the model and training data +
-                - agents: Number of parallel agents/environments to run (Defaults to 1) +
-                - nEpisodes: Total number of episodes to train +
-                - maxNumTimeSteps: Maximum number of time steps per episode +
-                - max_run_time: Maximum run time for this training session (in seconds) +
-                - run_save_path: The path to save the training data and model +
-                - action_space: List of available actions to take in the environment +
-                - env: The environment object +
-                - stateSize: The size of the state space +
+                - name: Project name (Different from session name)
+                - hidden_layers: List of integers defining the number of nodes in each hidden layer
+                - learning_rate: Learning rate for the optimizer
+                - extra_info: Additional information as a string
+                - continue_run: Boolean flag to continue from last checkpoint
+                - debug: Boolean flag for debug mode, in which, extra data is saved in a directory for debugging purposes
+                - stop_learning_at_win_percent: Percentage threshold of latest 100 won episodes where we stop updating networks
+                - upload_to_cloud: Boolean flag to upload the model and training data to the cloud
+                - local_backup: Boolean flag to save a local backup of the model and training data
+                - agents: Number of parallel agents/environments to run (Defaults to 1)
+                - nEpisodes: Total number of episodes to train
+                - maxNumTimeSteps: Maximum number of time steps per episode
+                - max_run_time: Maximum run time for this training session (in seconds)
+                - run_save_path: The path to save the training data and model
+                - action_space: List of available actions to take in the environment
+                - env: The environment object
+                - stateSize: The size of the state space
                 
                 - DDQN specific parameters:
-                - batch: Mini-batch size for training  +
-                - gamma: Discount factor for future rewards +
-                - memorySize: Size of the replay memory +
-                - startEbsilon: Starting value of epsilon for exploration +
-                - decay: Epsilon decay rate for exploration +
-                - ebsilonEnd: Minimum value of epsilon for exploration +
-                - numUpdateTS: The timestep frequency at which we need to update the networks +
+                - batch: Mini-batch size for training 
+                - gamma: Discount factor for future rewards
+                - memorySize: Size of the replay memory
+                - startEbsilon: Starting value of epsilon for exploration
+                - decay: Epsilon decay rate for exploration
+                - endEbsilon: Minimum value of epsilon for exploration
+                - numUpdateTS: The timestep frequency at which we need to update the networks
 
             networks (dict): A dictionary containing the neural network object's to be used in training. Must include:
-                - architecture: Network architecture type (e.g., 'ann' or 'snn') +
-                - qNetwork_model: The main Q-network model (PyTorch nn.Module) +
-                - targetNetwork_model: The target Q-network model (PyTorch nn.Module) +
-                - optimizer_main: The optimizer for the main Q-network (PyTorch optimizer) +
-                - optimizer_target: The optimizer for the target Q-network (PyTorch optimizer) +
+                - architecture: Network architecture type (e.g., 'ann' or 'snn')
+                - qNetwork_model: The main Q-network model (PyTorch nn.Module)
+                - targetNetwork_model: The target Q-network model (PyTorch nn.Module)
+                - optimizer_main: The optimizer for the main Q-network (PyTorch optimizer)
+                - optimizer_target: The optimizer for the target Q-network (PyTorch optimizer)
         """
 
         # Check if all required arguments are present
         # args - General parameters for training
         assert "name" in args, "Project name is required in args"
-        assert "hidden_layers" in args, "Hidden layers configuration is required in args"
-        assert "learning_rate" in args, "Learning rate is required in args"
         assert "extra_info" in args, "Extra info flag is required in args"
         assert "continue_run" in args, "Continue run flag is required in args"
         assert "debug" in args, "Debug mode flag is required in args"
         assert "stop_learning_at_win_percent" in args, "Stop learning percent is required in args"
         assert "upload_to_cloud" in args, "Upload to cloud flag is required in args"
         assert "local_backup" in args, "Local backup flag is required in args"
-        assert "nEpisodes" in args, "Number of episodes is required in args"
-        assert "maxNumTimeSteps" in args, "Maximum number of time steps per episode is required in args"
         assert "max_run_time" in args, "Maximum run time for this training session is required in args"
         assert "run_save_path" in args, "The path to save the training data and model is required in args"
         assert "action_space" in args, "Action space is required in args (Should be a list of available actions)"
@@ -74,23 +70,39 @@ class DDQN():
         assert "stateSize" in args, "The size of the state space is required in args"
 
         # args - Specific parameters for DDQN
-        assert "decay" in args, "Ebsilon's decay rate is required in args"
-        assert "batch" in args, "Batch size is required in args"
-        assert "gamma" in args, "Discount factor is required in args"
-        assert "startEbsilon" in args, "Starting value of ebsilon is required in args"
-        assert "ebsilonEnd" in args, "Ending value of ebsilon is required in args"
-        assert "memorySize" in args, "Memmory size is required for making the replay memory"
-        assert "numUpdateTS" in args, "The timestep frequency at which we need to update the networks is required in args"
+        assert "algorithm" in args, "Algorithm is required in args"
+        assert "algorithm_options" in args, "Algorithm options are required in args"
+        assert "learning_rate" in args["algorithm_options"], "Learning rate is required in args"
+        assert "decay" in args["algorithm_options"], "Ebsilon's decay rate is required in args"
+        assert "batch" in args["algorithm_options"], "Batch size is required in args"
+        assert "gamma" in args["algorithm_options"], "Discount factor is required in args"
+        assert "memorySize" in args["algorithm_options"], "Memmory size is required for making the replay memory"
+        assert "startEbsilon" in args["algorithm_options"], "Starting value of ebsilon is required in args"
+        assert "endEbsilon" in args["algorithm_options"], "Ending value of ebsilon is required in args"
+        assert "numUpdateTS" in args["algorithm_options"], "The timestep frequency at which we need to update the networks is required in args"
+        assert "nEpisodes" in  args["algorithm_options"], "Number of episodes is required in args"
+        assert "maxNumTimeSteps" in args["algorithm_options"], "Maximum number of time steps per episode is required in args"
 
         # networks
-        assert "architecture" in args, "Network architecture type is required in args (e.g., ann or snn)"
+        assert "network" in args, "network is required in args (e.g., ann or snn)"
+        assert "network_options" in args, "network options are required in args"
+        assert "hidden_layers" in args["network_options"], "Hidden layers configuration is required in args"
+        if args["network"] == "snn":
+            assert "snn_beta" in args["network_options"], "SNN beta parameter is required in args for SNN"
+            assert "snn_tSteps" in args["network_options"], "SNN time steps parameter is required in args for SNN"
         assert "qNetwork_model" in networks, "Q-network model is required in networks dictionary"
         assert "targetNetwork_model" in networks, "Target Q-network model is required in networks dictionary"
         assert "optimizer_main" in networks, "Main optimizer is required in networks dictionary"
         assert "optimizer_target" in networks, "Target optimizer is required in networks dictionary"
 
         if "agents" in args: 
-            if 1 < args["agents"]: print("For now, only 1 agent is supported. Setting agents to 1.") #TODO: Add support for parallel agents
+            if 1 < args["agents"]:raise Exception("For now, only 1 agent is supported. Setting agents to 1.") #TODO: Add support for parallel agents
+
+        if args["algorithm"] != "DDQN":
+            raise ValueError(f"Algorithm should be DDQN, not {args['algorithm']}")
+        
+        if args["algorithm_options"] == None or args["algorithm_options"] == {}:
+            raise ValueError("algorithm_options cannot be None or empty for DDQN")
 
         # Set pytorch parameters: The device (CPU or GPU) and data types
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -99,8 +111,6 @@ class DDQN():
         # Set training hyperparameters
         self.sessionName = sessionName
         self.projectName = args["name"]
-        self.hiddenNodes = args["hidden_layers"]
-        self.learningRate = args["learning_rate"]
         self.extraInfo = args["extra_info"] if 'extra_info' in args else ""
         self.continueLastRun = args["continue_run"]
         self.debugMode = args["debug"]
@@ -117,20 +127,23 @@ class DDQN():
         self.stateSize = args["stateSize"]
 
         # DDQN hyperparameters
-        self.eDecay = args["decay"]
-        self.gamma = args["gamma"]
-        self.miniBatchSize = args["batch"]
-        self.memorySize = args["memorySize"]
+        _options = args["algorithm_options"]
+        self.learningRate = _options["learning_rate"]#
+        self.eDecay = _options["decay"]#
+        self.gamma = _options["gamma"]#
+        self.miniBatchSize = _options["batch"]#
+        self.memorySize = _options["memorySize"]#
         self.agentExp = namedtuple("exp", ["state", "action", "reward", "nextState", "done"])
-        self.nEpisodes = args["nEpisodes"]
-        self.maxNumTimeSteps = args["maxNumTimeSteps"]
-        self.ebsilon = args["startEbsilon"]
-        self.ebsilonEnd   = args["ebsilonEnd"]
-        self.numUpdateTS = args["numUpdateTS"]
+        self.nEpisodes = _options["nEpisodes"]
+        self.maxNumTimeSteps = _options["maxNumTimeSteps"]
+        self.ebsilon = _options["startEbsilon"]#
+        self.endEbsilon   = _options["endEbsilon"]#
+        self.numUpdateTS = _options["numUpdateTS"]#
 
         self.avgWindow = 100 # The number of previous episodes for calculating the average episode reward
     
         # Handle the online/offline model saving parameters
+        self.hiddenNodes = args["network_options"]["hidden_layers"]
         self.backUpData = {}
         self.modelDetails = f"{'_'.join([str(l) for l in self.hiddenNodes])}_{self.learningRate}_{self.eDecay}_{self.miniBatchSize}_{self.gamma}_{self.NUM_ENVS}_{self.extraInfo}"
         if self.uploadToCloud:
@@ -140,7 +153,7 @@ class DDQN():
         self.mem = ReplayMemory(self.memorySize, self.dtype, self.device)
 
         # Neural network models and optimizers
-        self.networkArchitecture = args["architecture"]
+        self.networkArchitecture = args["network"]
         self.qNetwork_model = networks['qNetwork_model'].to(self.device, dtype = self.dtype)
         self.targetQNetwork_model = networks['targetNetwork_model'].to(self.device, dtype = self.dtype)
         self.optimizer_main = networks['optimizer_main']
@@ -155,7 +168,14 @@ class DDQN():
                 "qNetwork_model": self.qNetwork_model,
                 "optimizer_main": self.optimizer_main,
                 "targetQNetwork_model": self.targetQNetwork_model,
-                "trainingParams": [self.startEpisode, self.startEbsilon, self.lstHistory, self.eDecay, self.NUM_ENVS, self.mem]
+                "trainingParams": [
+                    self.startEpisode, 
+                    self.startEbsilon, 
+                    self.lstHistory, 
+                    self.eDecay, 
+                    self.NUM_ENVS, 
+                    self.mem
+                ]
             }
 
             # NUM_ENVS is a constant and is defined when running the script for the first time, So we disregard re-loading it
@@ -411,7 +431,7 @@ class DDQN():
             epPointAvg = np.mean(episodePointHist[-self.avgWindow:])
 
             # Decay ebsilon
-            self.ebsilon = self.decayEbsilon(self.ebsilon, self.eDecay, self.ebsilonEnd)
+            self.ebsilon = self.decayEbsilon(self.ebsilon, self.eDecay, self.endEbsilon)
 
             # Save model weights and parameters periodically (For later use)
             if self.localBackup:

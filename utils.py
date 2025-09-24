@@ -661,25 +661,20 @@ def modelParamParser():
     
     # Add necessary arguments
     parser.add_argument("--name", "-n", type = str, default = "unknown", help = "The name of the model")
+    parser.add_argument("--algorithm", "-alg", type = str, default = "DDQN", help = "The RL algorithm to use (PPO or DDQN)")
+    parser.add_argument("--algorithm_options", "-algops", type = str, default = "", help = "The options for the RL algorithm in JSON format")
+    parser.add_argument("--network", "-net", type = str, default = "ann", help = "The network architecture to use (ann or snn)")
+    parser.add_argument("--network_options", "-netops", type = str, default = "", help = "The options for the network in JSON format")
+
     parser.add_argument("--continue_run", "-c", action = "store_true", help = "Continue the last run")
     parser.add_argument("--agents", "-a", type = int, default = 1, help = "Number rof agents")
-    parser.add_argument("--hidden_layers", "-hl", type = int, nargs = "+", default = [64, 64], help = "Hidden layer size")
-    parser.add_argument("--learning_rate", "-lr", type = float, default = 0.0001, help = "Learning rate")
-    parser.add_argument("--decay", "-d", type = float, default = 0.999, help = "Ebsilon decay rate")
-    parser.add_argument("--batch", "-b", type = int, default = 1000, help = "The mini-batch size")
-    parser.add_argument("--gamma", "-g", type = float, default = 0.995, help = "Discount factor")
-    parser.add_argument("--stop_learning_at_win_percent", "-slw", type = float, default = 0.995, help = "Stop updating the network if the last 100 episodes' win percent is greater than this value")
     parser.add_argument("--extra_info", "-extra", type = str, default = "", help = "Extra information")
     parser.add_argument("--max_run_time", "-t", type = int, default = 60 * 60, help = "Maximum run time of training in seconds")
-    parser.add_argument("--train_finish_timestamp", "-tfts", type = float, default = 0., help = "The timestamp at which entire training (all runs) is finished")
-    parser.add_argument("--train_max_time", "-tt", type = int, default = 60 * 60 * 4, help = "Sum of run time of all trainings in seconds")
+    parser.add_argument("--stop_learning_at_win_percent", "-slw", type = float, default = 0.995, help = "Stop updating the network if the last 100 episodes' win percent is greater than this value")
     parser.add_argument("--upload_to_cloud", "-u", action = "store_true", help = "Upload the training history to cloud")
     parser.add_argument("--local_backup", "-l", action = "store_true", help = "Save the training networks' data locally")
-    parser.add_argument("--architecture", "-ar", type = str, default = "ann", help = "The network architecture to use (ann or snn)")
-    parser.add_argument("--snn_tSteps", "-snn_t", type = int, default = 25, help = "Number of timesteps in SNN (if architecture is snn)")
-    parser.add_argument("--snn_beta", "-snn_b", type = float, default = 0.95, help = "Beta of the LIF model (if architecture is snn)")
     parser.add_argument("--debug", "-db", action = "store_true", help = "Keep track of the training progress")
-
+    parser.add_argument("--train_finish_timestamp", "-tfts", type = float, default = 0., help = "The timestamp at which entire training (all runs) is finished")
     
     return parser
 

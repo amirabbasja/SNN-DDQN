@@ -233,7 +233,19 @@ if("--forcenewrun" in sys.argv):
     forceNewRun = True
     sys.argv.remove("--forcenewrun")
 
-scriptPath = "./train.py" # Default
+# Open and read run configuration
+assert os.path.exists("conf.json"), "conf.json file doesn't exist"
+with open('conf.json', 'r') as file:
+    data = json.load(file)
+
+# Choose script path based on algorithm
+if data["algorithm"] == "PPO":
+    scriptPath = "./train_PPO.py"
+elif data["algorithm"] == "DDQN":
+    scriptPath = "./train_DDQN.py"
+else:
+    raise ValueError(f"Unknown algorithm specified in conf.json: {data['algorithm']}")
+
 if 1 < len(sys.argv):
     if(not isValidPath(sys.argv[1])):
         print(f"Invalid path provided: {sys.argv[1]}")
@@ -247,14 +259,9 @@ if 1 < len(sys.argv):
     scriptPath = sys.argv[1]
     print(f"Using script path: {scriptPath}")
 
-# Open and read run configuration
-assert os.path.exists("conf.json"), "conf.json file doesn't exist"
-with open('conf.json', 'r') as file:
-    data = json.load(file)
-
 startTime = time.time()
 endTime = startTime + data["train_max_time"]  # 3.5 hours
-maxRunTime = data["max_run_time"]  # 45 min
+maxRunTime = data["max_run_time"]
 
 if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
     send_telegram_message(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training started for session {os.getenv('session_name')}")
@@ -264,23 +271,19 @@ while time.time() < endTime:
     # Run parameters
     argsDict = {
         "name": data["name"],
+        "algorithm": data["algorithm"],
+        "algorithm_options": data["algorithm_options"],
+        "network": data["network"],
+        "network_options": data["network_options"],
         "continue_run": data["continue_run"], # If --forcenewrun was passed, override config
         "agents": data["agents"],
-        "hidden_layers": data["hidden_layers"],
-        "learning_rate": data["learning_rate"],
-        "decay": data["decay"],
-        "batch": data["batch"],
-        "gamma": data["gamma"],
         "extra_info": "",
-        "train_finish_timestamp": endTime,
         "max_run_time": data["max_run_time"], # In seconds
+        "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
         "upload_to_cloud": data["upload_to_cloud"],
         "local_backup": data["local_backup"],
-        "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
         "debug": data["debug"],
-        "architecture": data["architecture"],
-        "snn_tSteps": data["snn_tSteps"],
-        "snn_beta": data["snn_beta"]
+        "train_finish_timestamp": endTime,
     }
 
     # Override continue_run if needed
@@ -306,10 +309,15 @@ while time.time() < endTime:
             scriptArgs.extend([f"--debug"]) if value else None
             continue
         
-        if name == "hidden_layers":
-            scriptArgs.extend([f"--{name}"] + [str(l) for l in value])
-        else:
-            scriptArgs.extend([f"--{name}", str(value)])
+        if name == "algorithm_options":
+            scriptArgs.extend([f"--algorithm_options", json.dumps(value)])
+            continue
+        
+        if name == "network_options":
+            scriptArgs.extend([f"--network_options", json.dumps(value)])
+            continue
+        
+        scriptArgs.extend([f"--{name}", str(value)])
 
     venvPath = str(os.getenv("python_venv_path"))
 

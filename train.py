@@ -61,12 +61,9 @@ if __name__ == "__main__":
     maxRunTime = runStartTime + args.max_run_time
 
     # Making the environment
-    s0 = 90 * np.pi / 180  # Initial angle in degrees
-    v0 = 0.8  # Initial angular velocity in rad/s
     NUM_ENVS = args.agents
     env = gym.make("LunarLander-v3") # Use render_mode = "human" to render each episode
 
-    # env = gym.make("LunarLander-v3") # Use render_mode = "human" to render each episode
     state, info = env.reset() # Get a sample state of the environment
     stateSize = [2] # Number of variables to define current step
     stateSize = env.observation_space.shape # Number of variables to define current step
@@ -152,7 +149,7 @@ if __name__ == "__main__":
     nEpisodes = 15000 # Number of learning episodes
     maxNumTimeSteps = 1000 # The number of time step in each episode
     ebsilon = 1 if startEbsilon == None else startEbsilon # The starting  value of ebsilon
-    ebsilonEnd   = .01 # The finishing value of ebsilon
+    ebsilonEnd  = .01 # The finishing value of ebsilon
     eDecay = eDecay # The rate at which ebsilon decays
     numUpdateTS = 4 # Frequency of time steps to update the NNs
     numP_Average = 100 # The number of previous episodes for calculating the average episode reward
