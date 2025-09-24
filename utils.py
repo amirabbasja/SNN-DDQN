@@ -807,10 +807,11 @@ def plotTrainingProcess(df, saveLoc):
     actionCounts = np.array(df['nActionInEpisode'].tolist())
 
     # Process the layer-wise spikes
-    _lst = df['spikesPerLayer'].tolist()
-    layerWiseSpikes = list(zip(*_lst))
-    layerWiseSpikes = [list(tup) for tup in layerWiseSpikes]
-    layerWiseSpikes
+    if 'spikesPerLayer' not in df.columns:
+        _lst = df['spikesPerLayer'].tolist()
+        layerWiseSpikes = list(zip(*_lst))
+        layerWiseSpikes = [list(tup) for tup in layerWiseSpikes]
+        layerWiseSpikes
 
     fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, sharex=True, figsize=(8, 15))
 
