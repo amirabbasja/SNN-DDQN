@@ -760,8 +760,8 @@ def get_next_run_number_and_create_folder(continueLastRun = False, args = None):
                 pastConfig = json.load(file)
                 currentConfig = vars(args)
 
-                for key in currentConfig.keys():
-                    if key not in pastConfig or pastConfig[key] != currentConfig[key]:
+                for key in pastConfig.keys():
+                    if key in currentConfig and pastConfig[key] != currentConfig[key]:
                         print(f"Configuration for '{key}' has changed from {pastConfig.get(key)} to {currentConfig[key]}. Creating a new run folder.")
                         next_run_number += 1
                         break
