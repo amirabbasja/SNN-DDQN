@@ -807,7 +807,7 @@ def plotTrainingProcess(df, saveLoc):
     actionCounts = np.array(df['nActionInEpisode'].tolist())
 
     # Process the layer-wise spikes
-    if 'spikesPerLayer' not in df.columns:
+    if 'spikesPerLayer' in df.columns:
         _lst = df['spikesPerLayer'].tolist()
         layerWiseSpikes = list(zip(*_lst))
         layerWiseSpikes = [list(tup) for tup in layerWiseSpikes]
@@ -834,7 +834,7 @@ def plotTrainingProcess(df, saveLoc):
     ax3.legend()
 
     # Plot
-    if 'spikesPerLayer' not in df.columns:
+    if 'spikesPerLayer' in df.columns:
         ax4.set_title("Layer-wise Spikes")
         ax4.set_yscale('log')
         for i in range(len(layerWiseSpikes)):
