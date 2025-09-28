@@ -30,6 +30,7 @@ class qNetwork_ANN(nn.Module):
         self.model = nn.Sequential(*lstLayers)
 
     def forward(self, x):
+        # Added None for consistency with SNN model
         return self.model(x), None
 
 class qNetwork_SNN(nn.Module):
