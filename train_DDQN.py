@@ -40,7 +40,7 @@ _, runSavePath = get_next_run_number_and_create_folder(continueLastRun, args)
 shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
 
 # Make the environment
-env = gym.make("LunarLander-v3")
+env = gym.make(args.env)
 state, info = env.reset() # Get a sample state of the environment 
 stateSize = env.observation_space.shape # Number of variables to define current step 
 nActions = env.action_space.n # Number of actions 

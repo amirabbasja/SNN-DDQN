@@ -10,6 +10,9 @@ from PPO import PPO
 parser = modelParamParser()
 args, unknown = parser.parse_known_args()
 
+# Deserialize the JSON strings into dictionaries
+args.network_options = json.loads(args.network_options)
+args.algorithm_options = json.loads(args.algorithm_options)
 
 uploadInfo = None
 if args.upload_to_cloud:
@@ -36,29 +39,26 @@ _, runSavePath = get_next_run_number_and_create_folder(continueLastRun, args)
 shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
 
 # Make the environment
-env = gym.make("LunarLander-v3")
+env = gym.make(args.env)
 state, info = env.reset() # Get a sample state of the environment 
 stateSize = env.observation_space.shape # Number of variables to define current step 
 nActions = env.action_space.n # Number of actions 
 actionSpace = np.arange(nActions).tolist() 
 
 # Make the model objects
-if args.architecture == "ann":
-    actorNetwork = qNetwork_ANN([stateSize[0], *args.hidden_layers, nActions])
-    criticNetwork = qNetwork_ANN([stateSize[0], *args.hidden_layers, nActions])
-elif args.architecture == "snn":
-    actorNetwork = qNetwork_SNN([stateSize[0], *args.hidden_layers, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps, DEBUG = args.debug)
-    criticNetwork = qNetwork_SNN([stateSize[0], *args.hidden_layers, nActions], beta = args.snn_beta, tSteps = args.snn_tSteps, DEBUG = args.debug)
+if args.network == "ann":
+    actorNetwork = qNetwork_ANN([stateSize[0], *args.network_options["hidden_layers_actor"], nActions])
+    criticNetwork = qNetwork_ANN([stateSize[0], *args.network_options["hidden_layers_critic"], 1])
+elif args.network == "snn":
+    actorNetwork = qNetwork_SNN([stateSize[0], *args.network_options["hidden_layers_actor"], nActions], beta = args.network_options["snn_beta"], tSteps = args.network_options["snn_tSteps"], DEBUG = args.debug)
+    criticNetwork = qNetwork_SNN([stateSize[0], *args.network_options["hidden_layers_critic"], 1], beta = args.network_options["snn_beta"], tSteps = args.network_options["snn_tSteps"], DEBUG = args.debug)
 else:
-    raise ValueError(f"Unknown architecture: {args.architecture}")
-
-# Two models should have identical weights initially
-criticNetwork.load_state_dict(actorNetwork.state_dict())
+    raise ValueError(f"Unknown network: {args.network}")
 
 # TODO: Add gradient clipping to the optimizer for avoiding exploding gradients
 # Suitable optimizer for gradient descent
-optimActor = torch.optim.Adam(actorNetwork.parameters(), lr = args.learning_rate)
-optimCritic = torch.optim.Adam(criticNetwork.parameters(), lr = args.learning_rate)
+optimActor = torch.optim.Adam(actorNetwork.parameters(), lr = args.algorithm_options["learning_rate"])
+optimCritic = torch.optim.Adam(criticNetwork.parameters(), lr = args.algorithm_options["learning_rate"])
 
 _networks = {
     "actorNetwork": actorNetwork,
@@ -68,18 +68,12 @@ _networks = {
 }
 
 args = vars(args) # Convert to dictionary
-args["maxNumTimeSteps"] = 1000
 args["action_space"] = actionSpace
 args["env"] = env
 args["stateSize"] = stateSize
 
-args["agents"] = 1  # For now, only 1 agent is supported
 args["uploadInfo"] = uploadInfo
 args["run_save_path"] = runSavePath
-args["timeStepsPerBatch"] = 4000
-args["gamma"] = 0.95
-args["clip"] = 0.2
-args["nUpdatesPerIteration"] = 5
 
-agent = PPO("HomePC", args, _networks)
+agent = PPO(os.getenv("session_name"), args, _networks)
 agent.learn(150000)

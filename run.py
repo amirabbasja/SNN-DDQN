@@ -271,6 +271,8 @@ while time.time() < endTime:
     # Run parameters
     argsDict = {
         "name": data["name"],
+        "env": data["env"],
+        "env_options": data["env_options"],
         "algorithm": data["algorithm"],
         "algorithm_options": data["algorithm_options"],
         "network": data["network"],
