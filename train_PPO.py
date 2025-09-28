@@ -76,4 +76,4 @@ args["uploadInfo"] = uploadInfo
 args["run_save_path"] = runSavePath
 
 agent = PPO(os.getenv("session_name"), args, _networks)
-agent.learn(150000)
+agent.learn()

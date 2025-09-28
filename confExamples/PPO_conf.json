@@ -1,6 +1,8 @@
 {
     "name": "SNN_DDQN",
     "algorithm": "PPO",
+    "env": "LunarLander-v3",
+    "env_options": {},
     "algorithm_options": {
         "learning_rate": 0.005,
         "maxNumTimeSteps": 1000,
