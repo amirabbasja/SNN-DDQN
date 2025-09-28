@@ -1,0 +1,31 @@
+{
+    "name": "SNN_DDQN",
+    "algorithm": "DDQN",
+    "algorithm_options": {
+        "learning_rate": 0.0004,
+        "decay": 0.998,
+        "batch": 100,
+        "gamma": 0.995,
+        "memorySize": 100000,
+        "startEbsilon": 1.0,
+        "endEbsilon": 0.1,
+        "numUpdateTS": 4,
+        "nEpisodes": 15000,
+        "maxNumTimeSteps": 1000
+    },
+    "network": "snn",
+    "network_options": {
+        "hidden_layers": [64, 64],
+        "snn_tSteps": 25,
+        "snn_beta": 0.95
+    },
+    "continue_run": false,
+    "agents": 1,
+    "extra_info": "",
+    "max_run_time": 12600, 
+    "stop_learning_at_win_percent": 80,
+    "train_max_time": 12600,
+    "upload_to_cloud": false,
+    "local_backup": true,
+    "debug": true
+}
