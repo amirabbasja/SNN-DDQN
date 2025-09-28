@@ -321,6 +321,35 @@ class DDQN():
         for targetParams, primaryParams in zip(__targetQNetworkModel.parameters(), __qNetworkModel.parameters()):
             targetParams.data.copy_(targetParams.data * (1 - .001) + primaryParams.data * .001)
 
+    def _printProgress(self, delay, lastPrintTime, trainingStartTime, **kwargs):
+        """
+        Prints the training progress in a manner that doesn't flood the terminal.
+        The print happens in delay second intervals to avoid jitters.
+
+        Args:
+            delay (int): The minimum time (in seconds) between two prints (In seconds)
+            lastPrintTime (int): The time the last print happened
+            trainingStartTime (int): The timestamp when the training started
+            **kwargs: Should have following keys
+                - episode (int): The current episode number
+                - epPointAvg (float): The average of the last {numP_Average} episodes
+                - finishTime (int): The finish timestamp of the current run
+                - latestCheckpoint (int): The latest checkpoint episode number
+                - t (int): The current timestep in the episode
+                - episodeStartTime (int): The timestamp when the current episode started
+        """
+
+        # Print the training status. Print only once each delay second to avoid jitters.
+        if delay < (time.time() - lastPrintTime):
+            os.system('cls' if os.name == 'nt' else 'clear')
+            lastPrintTime = time.time()
+            print(f"ElapsedTime: {int(time.time() - trainingStartTime): <5}s | Episode: {kwargs["episode"]: <5} | Timestep: {kwargs["t"]: <5} | The average of the {self.avgWindow: <5} episodes is: {int(kwargs["epPointAvg"]): <5}")
+            print(f"Latest chekpoint: {kwargs["latestCheckpoint"]} | Speed {kwargs["t"]/(time.time()-kwargs["episodeStartTime"]+1e-9):.1f} tps | ebsilon: {self.ebsilon:.3f} ")
+            print(f"Remaining time of this run: {kwargs["finishTime"] - time.time():.1f}s")
+            print(f"Memory details: {self.mem.len}")
+        
+        return lastPrintTime
+    
     def train(self):
         """
         Starts the training process
@@ -394,13 +423,17 @@ class DDQN():
                 actionString += f"{action},"
 
                 # Print the training status. Print only once each second to avoid jitters.
-                if 1 < (time.time() - _lastPrintTime):
-                    os.system('cls' if os.name == 'nt' else 'clear')
-                    _lastPrintTime = time.time()
-                    print(f"ElapsedTime: {int(time.time() - __trainingStartTime): <5}s | Episode: {episode: <5} | Timestep: {t: <5} | The average of the {self.avgWindow: <5} episodes is: {int(epPointAvg): <5}")
-                    print(f"Latest chekpoint: {latestCheckpoint} | Speed {t/(time.time()-tempTime+1e-9):.1f} tps | ebsilon: {self.ebsilon:.3f} ")
-                    print(f"Remaining time of this run: {__finishTime - time.time():.1f}s")
-                    print(f"Memory details: {self.mem.len}")
+                _lastPrintTime = self._printProgress(
+                    1, 
+                    _lastPrintTime, 
+                    __trainingStartTime, 
+                    episode = episode, 
+                    epPointAvg = epPointAvg, 
+                    finishTime = __finishTime, 
+                    latestCheckpoint = latestCheckpoint, 
+                    t = t, 
+                    episodeStartTime = tempTime
+                )
                 
                 if terminated or truncated or __finishTime < time.time(): break
             
