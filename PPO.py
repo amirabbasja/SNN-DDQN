@@ -119,7 +119,8 @@ class PPO:
         self.maxNumTimeSteps = args["algorithm_options"]["maxNumTimeSteps"]
 
         self.avgWindow = 100 # The number of previous episodes for calculating the average episode reward
-    
+        self.totalEpisodes = 150000 # Total number of episodes to train
+
         # Handle the online/offline model saving parameters
         self.backUpData = {}
         self.modelDetails = f"{self.learningRate}_{self.clip}_{self.nUpdatesPerIteration}_{self.gamma}_{self.NUM_ENVS}_{self.extraInfo}"
@@ -293,7 +294,7 @@ class PPO:
         
         return batchRewardsToGo
     
-    def learn(self, totalSteps):
+    def learn(self):
         rewardsMem = []
         criticLossMem = []
         actorLossMem = []
@@ -304,7 +305,7 @@ class PPO:
         _lastPrintTime = time.time()
         _trainingStartTime = time.time()
         _latestCheckpoint = 0
-        while t < totalSteps:
+        while episode < self.totalEpisodes:
             # Collect data
             episodeStartTime = time.time()
             batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards = self.rollout(episode)
