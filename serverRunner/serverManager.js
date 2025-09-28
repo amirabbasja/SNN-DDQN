@@ -17,7 +17,11 @@ async function readJsonFile(path) {
 function runPythonScript(loc, param, timedKill = false) {
     return new Promise((resolve, reject) => {
         // Spawn a child process to run the Python script
-        const pythonProcess = spawn('python', [loc, param.action, param.credentials])
+        let args = []
+        if(param.forceNewRun) args = [loc, param.action, param.credentials, param.forceNewRun]
+        else args = [loc, param.action, param.credentials]
+        
+        const pythonProcess = spawn('python', args)
 
         let studioName = JSON.parse(param.credentials).user
         let output = ''
@@ -130,7 +134,7 @@ bot.on('message', async (msg) => {
         for(let name of Object.keys(studios)){
             const params = { action: "stop_single", credentials: JSON.stringify(studios[name])}
             const result = await runPythonScript("./serverRunner/studioManager.py", params)
-            bot.editMessageText(`Studio ${studios[studioName].user} stopped`, {chat_id: chatId, message_id: lastMessageId})
+            bot.editMessageText(`Studio ${studios[name].user} stopped`, {chat_id: chatId, message_id: lastMessageId})
         }
         bot.sendMessage(chatId, `All studios stopped.`)
         infiniteTraining = false
@@ -142,7 +146,7 @@ bot.on('message', async (msg) => {
             bot.sendMessage(chatId, "Please provide a correct studio name. Usage: status <studio_name>")
             return
         }
-        const params = { action: "status_single", credentials: JSON.stringify(studios[studioName])}
+        const params = { action: "status_single", credentials: JSON.stringify(studios[studioName]) }
         const result = await runPythonScript("./serverRunner/studioManager.py", params)
         if(result.includes("Error")){
             bot.sendMessage(chatId, `Error getting status for ${studios[studioName].user}: ${result}`)
@@ -171,7 +175,7 @@ bot.on('message', async (msg) => {
         bot.editMessageText(`All studios status:\nNot running:\n   ${noRunning.join("\n   ")}\nRunning:\n   ${running.join("\n   ")}\nError:\n   ${error.join("\n   ")}`, {chat_id: chatId, message_id: lastMessageId})
     } else if (text.toLowerCase()?.startsWith("train_all")){
         let forceNewRun = false
-        if("forece_new_run" in text.toLowerCase()){ forceNewRun = true }
+        if(text.toLowerCase().includes("force_new_run")){ forceNewRun = true }
 
         infiniteTraining = true
         while(infiniteTraining){
