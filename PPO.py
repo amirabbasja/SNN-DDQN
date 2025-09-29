@@ -73,6 +73,7 @@ class PPO:
         assert "maxNumTimeSteps" in args["algorithm_options"], "Maximum number of time steps per episode is required in args"
         assert "entropyCoef" in args["algorithm_options"],  "For PPO, entropy is necessary. If you want to disregard adding enthropy, pass 0"
         assert "advantage_method" in args["algorithm_options"], "Advantage method is required in args (e.g., monte_carlo, gae)"
+        assert "maxEpisodesCount" in args["algorithm_options"], "Maximum number of episodes to train is required in args"
 
         # networks
         assert "network" in args, "network is required in args (e.g., ann or snn)"
@@ -125,9 +126,9 @@ class PPO:
         self.entropyCoef = args["algorithm_options"]["entropyCoef"] # Increases the exploration by adding to loss.
         self.advantageMethod = args["algorithm_options"]["advantage_method"]
         self.gaeLambda = args["algorithm_options"]["gae_lambda"] if self.advantageMethod == "gae" else None
+        self.totalEpisodes = args["algorithm_options"]["maxEpisodesCount"] # Total number of episodes to train
 
         self.avgWindow = 100 # The number of previous episodes for calculating the average episode reward
-        self.totalEpisodes = 150000 # Total number of episodes to train
 
         # Handle the online/offline model saving parameters
         self.backUpData = {}
