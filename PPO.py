@@ -71,6 +71,8 @@ class PPO:
         assert "nUpdatesPerIteration" in args["algorithm_options"], "Number of updates per iteration is required in args"
         assert "clip" in args["algorithm_options"], "Clipping parameter is required in args"
         assert "maxNumTimeSteps" in args["algorithm_options"], "Maximum number of time steps per episode is required in args"
+        assert "entropyCoef" in args["algorithm_options"],  "For PPO, entropy is necessary. If you want to disregard adding enthropy, pass 0"
+        assert "advantage_method" in args["algorithm_options"], "Advantage method is required in args (e.g., monte_carlo, gae)"
 
         # networks
         assert "network" in args, "network is required in args (e.g., ann or snn)"
@@ -87,6 +89,9 @@ class PPO:
 
         if "agents" in args: 
             if 1 < args["agents"]: raise Exception("For now, only 1 agent is supported. Setting agents to 1.") #TODO: Add support for parallel agents
+
+        if args["algorithm_options"]["advantage_method"] == "gae":
+            assert "gae_lambda" in args["algorithm_options"], "GAE lambda parameter is required in args for GAE advantage method"
 
         # Set pytorch parameters: The device (CPU or GPU) and data types
         self.device = torch.device("cpu") # Force CPU for now. TODO: Add support for GPU => torch.device("cuda") if torch.cuda.is_available() else torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -117,6 +122,9 @@ class PPO:
         self.nUpdatesPerIteration = args["algorithm_options"]["nUpdatesPerIteration"]
         self.clip = args["algorithm_options"]["clip"]
         self.maxNumTimeSteps = args["algorithm_options"]["maxNumTimeSteps"]
+        self.entropyCoef = args["algorithm_options"]["entropyCoef"] # Increases the exploration by adding to loss.
+        self.advantageMethod = args["algorithm_options"]["advantage_method"]
+        self.gaeLambda = args["algorithm_options"]["gae_lambda"] if self.advantageMethod == "gae" else None
 
         self.avgWindow = 100 # The number of previous episodes for calculating the average episode reward
         self.totalEpisodes = 150000 # Total number of episodes to train
@@ -143,6 +151,7 @@ class PPO:
         # Necessary data to be collected during training
         self._last100WinPercentage = 0.0
         self.lstHistory = None # A list of dictionaries for storing episode history
+        self.lstActions = [] # Fills only if debugMode is active
 
     def getActions(self, obs):
         """
@@ -207,6 +216,7 @@ class PPO:
                     _spikesPerLayer = [0 for _ in range(len(self.criticNetwork.layers))]
 
             terminated, truncated = False, False
+            episodeActions = []
             for tEpisode in range(self.maxNumTimeSteps):
                 t += 1
                 
@@ -229,6 +239,10 @@ class PPO:
                 # Ensure we append a plain Python int
                 batchActions.append(int(action))
                 batchLogProbs.append(logProb)
+
+                # Save actions if in debugMode
+                if self.debugMode:
+                    episodeActions.append(action)
                 
                 if terminated or truncated: break
             
@@ -251,8 +265,16 @@ class PPO:
                 "avgSpikesPerLayer": [spikes/t for spikes in _spikesPerLayer] if self.networkArchitecture == "snn" and self.debugMode else None,
                 "nActionInEpisode": _nActionInEpisode,
                 "totalGradientNorms": _gradientNorms if self.debugMode else None,
-                "layerWiseNorms": _layerWiseNorms if self.debugMode else None
+                "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
             })
+
+            # Store actions for this episode (only in debug mode)
+            if self.debugMode:
+                self.lstActions.append({
+                    "episode": episodeNumber,
+                    "seed": randomSeed,
+                    "actions": episodeActions  # list of ints
+                })
 
             # Plot the progress
             if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
@@ -271,8 +293,7 @@ class PPO:
         batchActions = torch.from_numpy(actions_array.astype(np.int64))
         batchLogProbs = torch.tensor(batchLogProbs, dtype=torch.float32)
         batchRewardsToGo = self.computeRewardsToGo(batchRewards)
-        
-        return batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, cumEpisodeRewards
+        return batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards, cumEpisodeRewards
     
     def computeRewardsToGo(self, batchRewards):
         """
@@ -305,39 +326,36 @@ class PPO:
         _lastPrintTime = time.time()
         _trainingStartTime = time.time()
         _latestCheckpoint = 0
+        _finishTime = _trainingStartTime + self.maxRunTime
         while episode < self.totalEpisodes:
             # Collect data
             episodeStartTime = time.time()
-            batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards = self.rollout(episode)
+            batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards, cumEpisodeRewards = self.rollout(episode)
             episode += len(batchEpisodeLengths)
-            rewardsMem.extend(batchRewards)
+            rewardsMem.extend(cumEpisodeRewards)
             
             # Increment time step
             t += np.sum(batchEpisodeLengths)
             
             # Calculate V_{phi,k}
-            V, _ = self.evaluate(batchObs, batchActions)
+            V, _, _ = self.evaluate(batchObs, batchActions)
 
             # Calculate A_{phi,k}
-            advantage = self.calculateAdvantage(methods='monte_carlo', batchRewardsToGo = batchRewardsToGo, V = V)
-            
-            # Normalize the advantage
-            advantage = self.noramlizeAdvantage(advantage)
+            # advantage = self.calculateAdvantage(methods='monte_carlo', batchRewardsToGo = batchRewardsToGo, V = V)
+            advantage = self.calculateAdvantage(methods = 'gae', batchRewards = batchRewards, V = V, batchEpisodeLengths = batchEpisodeLengths)
+            advantage = self.noramlizeAdvantage(advantage).detach()
             
             if self._last100WinPercentage < self.stopLearningPercent:
                 # Aggregate losses for this batch (to map them to episodes)
                 batchActorLosses = []
                 batchCriticLosses = []
                 for i in range(self.nUpdatesPerIteration):
-                    V, currentLogProbs = self.evaluate(batchObs, batchActions)
-                    
+                    V, currentLogProbs, entropy = self.evaluate(batchObs, batchActions)
                     ratio = torch.exp(currentLogProbs - batchLogProbs)
-                    
                     surr1 = ratio * advantage
                     surr2 = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantage
-                    
-                    # Calculate the network losses
-                    actorLoss = -torch.min(surr1, surr2).mean()
+                    # Actor loss with entropy bonus
+                    actorLoss = -torch.min(surr1, surr2).mean() - self.entropyCoef * entropy.mean()
                     criticLoss = nn.MSELoss()(V, batchRewardsToGo)
                     actorLossMem.append(actorLoss.item())
                     criticLossMem.append(criticLoss.item())
@@ -380,6 +398,8 @@ class PPO:
                 avgCriticLoss = np.array(criticLossMem[-self.avgWindow:-1]).mean(), 
                 avgReward = np.array(rewardsMem[-self.avgWindow:-1]).mean()
             )
+                
+            if _finishTime < time.time(): break
 
         return rewardsMem, actorLossMem, criticLossMem
 
@@ -402,6 +422,13 @@ class PPO:
             plotGradientNorms(histDf, os.path.join(self.runSavePath, f"gradient_norms.png"))
         except Exception as e:
             print("Could not plot the gradient norms. Error:", e)
+
+        # Save actions to a pickle file periodically
+        try:
+            actions_pickle_path = os.path.join(self.runSavePath, "actions.pkl")
+            self.saveActionsToPickle(actions_pickle_path)
+        except Exception as e:
+            print("Could not save actions.pkl. Error:", e)
 
     def plotActorCriticLoss(self, histDf, savePath):
         """
@@ -491,8 +518,8 @@ class PPO:
         """
         if methods == 'monte_carlo':
             return self.calculateAdvantage_MC(**kwargs)
-        # elif methods == 'gae':
-        #     return self.calculateAdvantage_GAE(**kwargs)
+        elif methods == 'gae':
+            return self.calculateAdvantage_GAE(kwargs['batchRewards'], kwargs['V'], kwargs['batchEpisodeLengths'])
         # elif methods == 'td':
         #     return self.calculateAdvantage_TD(**kwargs)
         else:
@@ -506,14 +533,15 @@ class PPO:
         # # For continuous action spaces, choose below:
         # distMean = self.actorNetwork(batchObs)
         # actionDist = MultivariateNormal(distMean, self.cov_mat)
+        # <Add enthropy for this as well if needed>
         # logProbs = actionDist.log_prob(batchActs)
 
         # For discrete action spaces, choose below:
         logits, _ = self.actorNetwork(batchObs)
         actionDist = Categorical(logits=logits)
         logProbs = actionDist.log_prob(batchActs)
-        
-        return V, logProbs
+        entropy = actionDist.entropy() if self.entropyCoef > 0 else torch.zeros_like(logProbs)
+        return V, logProbs, entropy
 
     def calculateAdvantage_MC(self, batchRewardsToGo, V):
         """
@@ -529,6 +557,38 @@ class PPO:
         # A_{phi,k} = R_k - V_{phi,k}
         return batchRewardsToGo - V.detach()
 
-    def calculateAdvantage_GAE(self):
-        # TODO
-        pass
+    def calculateAdvantage_GAE(self, batchRewards, V, batchEpisodeLengths):
+        """
+        Generalized Advantage Estimation (GAE).
+        Args:
+            batchRewards (list[list[float]]): Rewards per episode in the batch.
+            V (torch.Tensor): Values for each timestep in the batch, flattened across episodes.
+            batchEpisodeLengths (list[int]): Length of each episode.
+        Returns:
+            advantages (torch.Tensor): Advantage per timestep, flattened.
+        """
+        advantages = torch.zeros_like(V)
+        idx = 0
+        for ep_len, rewards in zip(batchEpisodeLengths, batchRewards):
+            # Process one episode
+            for t in reversed(range(ep_len)):
+                v_t = V[idx + t]
+                if t == ep_len - 1:
+                    v_next = torch.tensor(0.0, dtype=V.dtype, device=V.device)
+                    adv_next = torch.tensor(0.0, dtype=V.dtype, device=V.device)
+                else:
+                    v_next = V[idx + t + 1]
+                    adv_next = advantages[idx + t + 1]
+                delta = torch.tensor(rewards[t], dtype=V.dtype, device=V.device) + self.gamma * v_next - v_t
+                advantages[idx + t] = delta + self.gamma * self.gaeLambda * adv_next
+            idx += ep_len
+        return advantages
+
+    def saveActionsToPickle(self, savePath):
+        """
+        Saves self.lstActions to a pickle file at the given path.
+        """
+        import pickle  # local import to avoid modifying global imports
+        os.makedirs(os.path.dirname(savePath), exist_ok=True)
+        with open(savePath, "wb") as f:
+            pickle.dump(self.lstActions, f)

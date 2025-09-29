@@ -4,12 +4,15 @@
     "env": "LunarLander-v3",
     "env_options": {},
     "algorithm_options": {
-        "learning_rate": 0.005,
+        "learning_rate": 0.0003,
         "maxNumTimeSteps": 1000,
-        "gamma": 0.95,
+        "gamma": 0.99,
         "clip": 0.2,
-        "nUpdatesPerIteration": 5,
-        "timeStepsPerBatch": 4000
+        "nUpdatesPerIteration": 10,
+        "timeStepsPerBatch": 4096,
+        "entropyCoef": 0.01,
+        "advantage_method": "gae",
+        "gae_lambda": 0.95
     },
     "network": "ann",
     "network_options": {
