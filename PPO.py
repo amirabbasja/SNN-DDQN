@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from models import *
 import time, os, random
+import json
 from utils import plotEpisodeReward, plotTrainingProcess, plotGradientNorms
 
 class PPO:
@@ -153,6 +154,7 @@ class PPO:
         self._last100WinPercentage = 0.0
         self.lstHistory = None # A list of dictionaries for storing episode history
         self.lstActions = [] # Fills only if debugMode is active
+        self.avgReward = -float('inf') # The average reward of the last avgWindow episodes
 
     def getActions(self, obs):
         """
@@ -279,6 +281,19 @@ class PPO:
 
             # Plot the progress
             if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
+                # Save the details
+                episodeData = {
+                    "session_name": self.sessionName,
+                    "episode": episodeNumber,
+                    "reward": reward,
+                    "avg_reward": self.avgReward,
+                    "Win Percentage (last 100)": self._last100WinPercentage,
+                }
+                
+                with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
+                    json.dump(episodeData, f, indent=2)
+                
+                # Plot the progress
                 self.plotProgress()
 
             batchEpisodeLengths.append(tEpisode + 1)
@@ -391,13 +406,14 @@ class PPO:
                     hist["avgCriticLoss"] = None
 
             # Print the training status. Print only once each 
+            self.avgReward = np.array(rewardsMem[-self.avgWindow:-1]).mean()
             _lastPrintTime = self._printProgress(
                 1, _lastPrintTime, _trainingStartTime,
                 t = t, episode = episode, finishTime = _trainingStartTime + self.maxRunTime, latestCheckpoint = _latestCheckpoint,
                 episodeStartTime = episodeStartTime, 
                 avgActorLoss = np.array(actorLossMem[-self.avgWindow:-1]).mean(), 
                 avgCriticLoss = np.array(criticLossMem[-self.avgWindow:-1]).mean(), 
-                avgReward = np.array(rewardsMem[-self.avgWindow:-1]).mean()
+                avgReward = self.avgReward
             )
                 
             if _finishTime < time.time(): break

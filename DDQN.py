@@ -162,6 +162,7 @@ class DDQN():
         self.startEpisode = 0
         self.startEbsilon = None
         self.lstHistory = None
+        self.avgReward = -float("inf")
         if self.continueLastRun and os.path.isfile(os.path.join(self.runSavePath, self.saveFileName)):
             # Load necessary parameters to resume the training from most recent run 
             load_params = {
@@ -363,10 +364,10 @@ class DDQN():
         episodePointHist = [] # For saving each episode's point for later demonstration
         episodeHistDf = None
         self.lstHistory = [] if self.lstHistory == None else self.lstHistory
-        epPointAvg = -999999 if len(self.lstHistory) == 0 else pd.DataFrame(self.lstHistory).iloc[-self.avgWindow:]["points"].mean()
+        self.avgReward = -float("inf") if len(self.lstHistory) == 0 else pd.DataFrame(self.lstHistory).iloc[-self.avgWindow:]["points"].mean()
         latestCheckpoint = 0
         _lastPrintTime = 0
-        _last100WinPercentage = 0
+        self._last100WinPercentage = 0
 
         for episode in range(self.startEpisode, self.nEpisodes):
             initialSeed = random.randint(1,1_000_000_000) # The random seed that determines the episode's I.C.
@@ -404,7 +405,7 @@ class DDQN():
                 # Store the experience of the current step in an experience deque.
                 self.mem.addNew(self.agentExp(self.state, action,reward, observation,True if terminated or truncated else False))
 
-                if not self.stopLearningPercent < _last100WinPercentage:
+                if not self.stopLearningPercent < self._last100WinPercentage:
                     # Check to see if we have to update the networks in the current step
                     update = self.updateNetworks(t, self.mem, self.miniBatchSize, self.numUpdateTS)
                     
@@ -428,7 +429,7 @@ class DDQN():
                     _lastPrintTime, 
                     __trainingStartTime, 
                     episode = episode, 
-                    epPointAvg = epPointAvg, 
+                    epPointAvg = self.avgReward, 
                     finishTime = __finishTime, 
                     latestCheckpoint = latestCheckpoint, 
                     t = t, 
@@ -437,7 +438,7 @@ class DDQN():
                 
                 if terminated or truncated or __finishTime < time.time(): break
             
-            _last100WinPercentage = np.sum([1 if exp["finalEpisodeReward"] > 75 else 0 for exp in self.lstHistory[-100:]]) / 100
+            self._last100WinPercentage = np.sum([1 if exp["finalEpisodeReward"] > 75 else 0 for exp in self.lstHistory[-100:]]) / 100
 
             # Save the episode history
             self.lstHistory.append({
@@ -461,7 +462,7 @@ class DDQN():
             episodePointHist.append(points)
 
             # Getting the average of {numP_Average} episodes
-            epPointAvg = np.mean(episodePointHist[-self.avgWindow:])
+            self.avgReward = np.mean(episodePointHist[-self.avgWindow:])
 
             # Decay ebsilon
             self.ebsilon = self.decayEbsilon(self.ebsilon, self.eDecay, self.endEbsilon)
@@ -502,6 +503,19 @@ class DDQN():
 
             # Plot the progress
             if (episode + 1) % 100 == 0 or episode == 2:
+                # Save the details
+                episodeData = {
+                    "session_name": self.sessionName,
+                    "episode": episode,
+                    "reward": points,
+                    "avg_reward": self.avgReward,
+                    "Win Percentage (last 100)": self._last100WinPercentage,
+                }
+                
+                with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
+                    json.dump(episodeData, f, indent=2)
+                
+                # Plot the details
                 histDf = pd.DataFrame(self.lstHistory)
 
                 plotEpisodeReward(histDf, os.path.join(self.runSavePath, f"episode_rewards.png"))
