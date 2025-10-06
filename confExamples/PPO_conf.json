@@ -12,7 +12,8 @@
         "timeStepsPerBatch": 4096,
         "entropyCoef": 0.01,
         "advantage_method": "gae",
-        "gae_lambda": 0.95
+        "gae_lambda": 0.95,
+        "maxEpisodesCount": 150000
     },
     "network": "ann",
     "network_options": {
