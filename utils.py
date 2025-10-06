@@ -563,7 +563,7 @@ def backUpToCloud(filePath = None, obj = None, objName = None, info: dict = None
             except:
                 pass  # Ignore cleanup errors
 
-def loadNetwork(fileName, **kwargs):
+def loadNetwork(fileName, algorithm, **kwargs):
     """
     Loads the previous training details from a file. The file should be 
     a dictionary, with all the details necessary to pickup where we left.
@@ -571,7 +571,9 @@ def loadNetwork(fileName, **kwargs):
     
     Args:
         fileName (str): The name of the file
+        algorithm (str): The type of the algorithm, either "DDQN" or "PPO"
         kwargs (dict): A dictionary with the following keys:
+            algorithm: "DDQN":
             qNetwork_model (torch.nn): The qNetwork_model
             optimizer_main (torch.optim): The qNetwork_model's optimizer 
                 object
@@ -586,71 +588,135 @@ def loadNetwork(fileName, **kwargs):
                 eDecay (float): The decay of ebsilon
                 NUM_ENVS (int): The number of agents
                 mem (ReplayMemory): An instance of replay memory object
+            
+            algorithm: "PPO":
+            actor_network (torch.nn): The actor_network
+            critic_network (torch.nn): The critic_network
+            optimizer_actor (torch.optim): The actor network's optimizer 
+            optimizer_critic (torch.optim): The critic network's optimizer 
+            trainingParams (list): A list containing following parameters
+                in order. We chose this approach to be able to change training 
+                parameters in-place:
+                startEpisode (int): The episode number to start from
+                lstHistory (list): The list holding the training history
     """
     # Check if all necessary data has been given so it can be overwritten 
     # when loaded and passed back to the user
-    assert "qNetwork_model" in kwargs.keys(), "Please pass the qNetwork_model object"
-    assert "optimizer_main" in kwargs.keys(), "Please pass the optimizer_main object"
-    assert "targetQNetwork_model" in kwargs.keys(), "Please pass the targetQNetwork_model object"
-    assert "trainingParams" in kwargs.keys(), "Please pass the trainingParams object"
-    if len(kwargs["trainingParams"]) != 6: print( f"You should enter the following parameters in the order: startEpisode, startEbsilon, lstHistory, eDecay, mem.")
-    
-    if os.path.isfile(fileName):
-        try:
-            # Try to read the main file
+    if algorithm not in kwargs.keys(): raise Exception("Please pass the type of the algorithm (DDQN or PPO)")
+    if algorithm == "DDQN":
+        assert "qNetwork_model" in kwargs.keys(), "Please pass the qNetwork_model object"
+        assert "optimizer_main" in kwargs.keys(), "Please pass the optimizer_main object"
+        assert "targetQNetwork_model" in kwargs.keys(), "Please pass the targetQNetwork_model object"
+        assert "trainingParams" in kwargs.keys(), "Please pass the trainingParams object"
+        if len(kwargs["trainingParams"]) != 6: print( f"You should enter the following parameters in the order: startEpisode, startEbsilon, lstHistory, eDecay, mem.")
+        
+        if os.path.isfile(fileName):
             try:
-                __data = torch.load(fileName, weights_only = False)
-            except:
-                print("Couldn't load the main file, trying to load the backup file")
+                # Try to read the main file
                 try:
-                    # Try to read the backup file
-                    __data = torch.load(os.path.join(os.path.dirname(fileName), "Backups", os.path.basename(fileName)), weights_only = False)
-                except Exception as e:
-                    raise Exception(f"Couldn't load the backup file")
-            
-            # Check if the file is a dictionary
-            if not isinstance(__data, dict): raise Exception(f"Couldn't load the file. File {fileName} is not a dictionary")
+                    __data = torch.load(fileName, weights_only = False)
+                except:
+                    print("Couldn't load the main file, trying to load the backup file")
+                    try:
+                        # Try to read the backup file
+                        __data = torch.load(os.path.join(os.path.dirname(fileName), "Backups", os.path.basename(fileName)), weights_only = False)
+                    except Exception as e:
+                        raise Exception(f"Couldn't load the backup file")
+                
+                # Check if the file is a dictionary
+                if not isinstance(__data, dict): raise Exception(f"Couldn't load the file. File {fileName} is not a dictionary")
 
-            # Load Q-Network
-            kwargs["qNetwork_model"].load_state_dict(__data["qNetwork_state_dict"]) # Model weights
-            kwargs["optimizer_main"].load_state_dict(__data["qNetwork_optimizer_state_dict"]) # Optimizer
+                # Load Q-Network
+                kwargs["qNetwork_model"].load_state_dict(__data["qNetwork_state_dict"]) # Model weights
+                kwargs["optimizer_main"].load_state_dict(__data["qNetwork_optimizer_state_dict"]) # Optimizer
 
-            # Load target Q-Network
-            kwargs["targetQNetwork_model"].load_state_dict(__data["targetQNetwork_state_dict"]) # Model weights
+                # Load target Q-Network
+                kwargs["targetQNetwork_model"].load_state_dict(__data["targetQNetwork_state_dict"]) # Model weights
 
-            # Load process parameters
-            kwargs["trainingParams"][0] = __data["episode"] # Starting episode number
-            kwargs["trainingParams"][1] = __data["hyperparameters"]["ebsilon"] # Starting ebsilon
-            kwargs["trainingParams"][2] = __data["train_history"]
-            kwargs["trainingParams"][3] = __data["hyperparameters"]["eDecay"]
-            kwargs["trainingParams"][4] = __data["hyperparameters"]["NUM_ENVS"]
+                # Load process parameters
+                kwargs["trainingParams"][0] = __data["episode"] # Starting episode number
+                kwargs["trainingParams"][1] = __data["hyperparameters"]["ebsilon"] # Starting ebsilon
+                kwargs["trainingParams"][2] = __data["train_history"]
+                kwargs["trainingParams"][3] = __data["hyperparameters"]["eDecay"]
+                kwargs["trainingParams"][4] = __data["hyperparameters"]["NUM_ENVS"]
 
-            kwargs["trainingParams"][5].loadExperiences(
-                __data["experiences"]["state"],
-                __data["experiences"]["action"],
-                __data["experiences"]["reward"],
-                __data["experiences"]["nextState"],
-                __data["experiences"]["done"],
-            )
-            
-            # All changes are in-place, however, we return the changed objects for convenience
-            return (
-                kwargs["qNetwork_model"],
-                kwargs["optimizer_main"],
-                kwargs["targetQNetwork_model"],
-                kwargs["trainingParams"][0],  # startEpisode
-                kwargs["trainingParams"][1],  # startEbsilon
-                kwargs["trainingParams"][2],  # lstHistory
-                kwargs["trainingParams"][3],  # eDecay
-                kwargs["trainingParams"][4],  # environment/agent number
-                kwargs["trainingParams"][5],  # mem
-            )
+                kwargs["trainingParams"][5].loadExperiences(
+                    __data["experiences"]["state"],
+                    __data["experiences"]["action"],
+                    __data["experiences"]["reward"],
+                    __data["experiences"]["nextState"],
+                    __data["experiences"]["done"],
+                )
+                
+                # All changes are in-place, however, we return the changed objects for convenience
+                return (
+                    kwargs["qNetwork_model"],
+                    kwargs["optimizer_main"],
+                    kwargs["targetQNetwork_model"],
+                    kwargs["trainingParams"][0],  # startEpisode
+                    kwargs["trainingParams"][1],  # startEbsilon
+                    kwargs["trainingParams"][2],  # lstHistory
+                    kwargs["trainingParams"][3],  # eDecay
+                    kwargs["trainingParams"][4],  # environment/agent number
+                    kwargs["trainingParams"][5],  # mem
+                )
 
-        except Exception as e:
-            print("ERROR: ", e)
-            return None
-    else:
-        raise Exception(f"Couldn't load the file. File {fileName} does not exist")
+            except Exception as e:
+                print("ERROR: ", e)
+                return None
+        else:
+            raise Exception(f"Couldn't load the file. File {fileName} does not exist")
+    elif algorithm == "PPO":
+        assert "actor_network" in kwargs.keys(), "Please pass the actor_network object"
+        assert "critic_network" in kwargs.keys(), "Please pass the critic_network object"
+        assert "optimizer_actor" in kwargs.keys(), "Please pass the optimizer_actor object"
+        assert "optimizer_critic" in kwargs.keys(), "Please pass the optimizer_critic object"
+        assert "trainingParams" in kwargs.keys(), "Please pass the trainingParams object"
+        if len(kwargs["trainingParams"]) != 2: print( f"You should enter the following parameters in the order: startEpisode, lstHistory.")
+        
+        if os.path.isfile(fileName):
+            try:
+                # Try to read the main file
+                try:
+                    __data = torch.load(fileName, weights_only = False)
+                except:
+                    print("Couldn't load the main file, trying to load the backup file")
+                    try:
+                        # Try to read the backup file
+                        __data = torch.load(os.path.join(os.path.dirname(fileName), "Backups", os.path.basename(fileName)), weights_only = False)
+                    except Exception as e:
+                        raise Exception(f"Couldn't load the backup file")
+                
+                # Check if the file is a dictionary
+                if not isinstance(__data, dict): raise Exception(f"Couldn't load the file. File {fileName} is not a dictionary")
+
+                # Actor network
+                kwargs["actor_network"].load_state_dict(__data["actor_network_state_dict"]) # Model weights
+                kwargs["optimizer_actor"].load_state_dict(__data["optimizer_actor_state_dict"]) # Optimizer
+
+                # Critic network
+                kwargs["critic_network"].load_state_dict(__data["critic_network_state_dict"]) # Model weights
+                kwargs["optimizer_critic"].load_state_dict(__data["optimizer_critic_state_dict"]) # Optimizer
+
+                # Load process parameters
+                kwargs["trainingParams"][0] = __data["episode"] # Starting episode number
+                kwargs["trainingParams"][1] = __data["train_history"]
+                
+                # All changes are in-place, however, we return the changed objects for convenience
+                return (
+                    kwargs["actor_network"],
+                    kwargs["critic_network"],
+                    kwargs["optimizer_actor"],
+                    kwargs["optimizer_critic"],
+                    kwargs["trainingParams"][0],  # startEpisode
+                    kwargs["trainingParams"][1],  # lstHistory
+                )
+
+            except Exception as e:
+                print("ERROR: ", e)
+                return None
+        else:
+            raise Exception(f"Couldn't load the file. File {fileName} does not exist")
 
 def modelParamParser():
     """

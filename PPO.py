@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from models import *
 import time, os, random
 import json
-from utils import plotEpisodeReward, plotTrainingProcess, plotGradientNorms
+from utils import plotEpisodeReward, plotTrainingProcess, plotGradientNorms, loadNetwork, saveModel
 
 class PPO:
     def __init__(self, sessionName, args, networks):
@@ -156,6 +156,29 @@ class PPO:
         self.lstActions = [] # Fills only if debugMode is active
         self.avgReward = -float('inf') # The average reward of the last avgWindow episodes
 
+        if self.continueLastRun:
+            # Load necessary parameters to resume the training from most recent run 
+            load_params = {
+                "critic_network": self.criticNetwork,
+                "actor_network": self.actorNetwork,
+                "optimizer_critic": self.optimCritic,
+                "optimizer_actor": self.optimActor,
+                "trainingParams": [
+                    self.startEpisode, 
+                    self.lstHistory, 
+                ]
+            }
+
+            # NUM_ENVS is a constant and is defined when running the script for the first time, So we disregard re-loading it
+            self.actorNetwork, self.criticNetwork, self.optimActor, self.optimCritic, self.startEpisode, self.lstHistory = loadNetwork(os.path.join(self.runSavePath, self.saveFileName), "PPO", **load_params)
+            
+            self.actorNetwork = self.actorNetwork.to(self.device, dtype = self.dtype)
+            self.criticNetwork = self.criticNetwork.to(self.device, dtype = self.dtype)
+
+            print("Continuing from episode:", self.startEpisode)
+
+        print(f"Device is: {self.device}")
+
     def getActions(self, obs):
         """
         Note: actions will be deterministic when testing, meaning that the "mean" 
@@ -279,6 +302,28 @@ class PPO:
                     "actions": episodeActions  # list of ints
                 })
 
+
+            # Save model weights and parameters periodically (For later use)
+            if self.localBackup:
+                if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
+                    backUpData = {
+                        "episode": episodeNumber,
+                        'actor_network_state_dict':  self.actorNetwork.state_dict(),
+                        'critic_network_state_dict': self.criticNetwork.state_dict(),
+                        'optimizer_actor_state_dict': self.optimActor.state_dict(),
+                        'optimizer_critic_state_dict': self.optimCritic.state_dict(),
+                        "elapsedTime": int(time.time() - startTimestamp),
+                        "train_history": self.lstHistory,
+                    }
+
+                    # Save the episode number
+                    latestCheckpoint = episodeNumber
+                    saveModel(backUpData, os.path.join(self.runSavePath, self.saveFileName))
+            
+            # Upload the lightweight progress data to cloud
+            if self.uploadToCloud:
+                raise Exception("Upload to cloud not implemented for PPO yet")
+            
             # Plot the progress
             if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
                 # Save the details

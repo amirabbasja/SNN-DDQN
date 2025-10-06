@@ -180,7 +180,7 @@ class DDQN():
             }
 
             # NUM_ENVS is a constant and is defined when running the script for the first time, So we disregard re-loading it
-            self.qNetwork_model, self.optimizer_main, self.targetQNetwork_model, self.startEpisode, self.startEbsilon, self.lstHistory, self.eDecay, _, self.mem = loadNetwork(os.path.join(self.runSavePath, self.saveFileName), **load_params)
+            self.qNetwork_model, self.optimizer_main, self.targetQNetwork_model, self.startEpisode, self.startEbsilon, self.lstHistory, self.eDecay, _, self.mem = loadNetwork(os.path.join(self.runSavePath, self.saveFileName), "DDQN", **load_params)
             
             self.qNetwork_model = self.qNetwork_model.to(self.device, dtype = self.dtype)
             self.targetQNetwork_model = self.targetQNetwork_model.to(self.device, dtype = self.dtype)
