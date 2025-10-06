@@ -152,6 +152,7 @@ class PPO:
 
         # Necessary data to be collected during training
         self._last100WinPercentage = 0.0
+        self.startEpisode = 0
         self.lstHistory = None # A list of dictionaries for storing episode history
         self.lstActions = [] # Fills only if debugMode is active
         self.avgReward = -float('inf') # The average reward of the last avgWindow episodes
