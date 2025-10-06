@@ -602,7 +602,6 @@ def loadNetwork(fileName, algorithm, **kwargs):
     """
     # Check if all necessary data has been given so it can be overwritten 
     # when loaded and passed back to the user
-    if algorithm not in kwargs.keys(): raise Exception("Please pass the type of the algorithm (DDQN or PPO)")
     if algorithm == "DDQN":
         assert "qNetwork_model" in kwargs.keys(), "Please pass the qNetwork_model object"
         assert "optimizer_main" in kwargs.keys(), "Please pass the optimizer_main object"
