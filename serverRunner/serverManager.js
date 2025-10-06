@@ -18,8 +18,7 @@ function runPythonScript(loc, param, timedKill = false) {
     return new Promise((resolve, reject) => {
         // Spawn a child process to run the Python script
         let args = []
-        if(param.forceNewRun) args = [loc, param.action, param.credentials, param.forceNewRun]
-        else args = [loc, param.action, param.credentials]
+        args = [loc, json.stringify(param)]
         
         const pythonProcess = spawn('python', args)
 
@@ -198,9 +197,18 @@ bot.on('message', async (msg) => {
     } else if(text.toLowerCase() === "stop_training"){
         infiniteTraining = false
         bot.sendMessage(chatId, "Infinite training loop stopped. Training will not continue after active sessions are done.")
+    } else if(text.toLowerCase().startsWith("training_stat")){
+        const parts = text.split(" ")
+        let studioName = parts[1]
+        if(!studioName || Object.keys(studios).indexOf(studioName) === -1){
+            bot.sendMessage(chatId, "Please provide a correct studio name. Usage: training_stat <studio_name>")
+            return
+        }
+        const params = { action: "training_stat", credentials: JSON.stringify(studios[studioName]), botToken: token, chatId: chatId }
+        await runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
     } else {
         // If the command is not recognized, send a help message
-        textToSend = "<b>Available commands </b>\n\n" +
+        textToSend = "<b>Help: </b>\n\n" +
             "- <code>list</code>: <i>Lists all available studios </i>\n" +
             "- <code>stop single studio_name</code>: <i>Stops the specified studio </i>\n" +
             "- <code>stop_all</code>: <i>Stops all running studios </i>\n" +
@@ -208,7 +216,8 @@ bot.on('message', async (msg) => {
             "- <code>status_all</code>: <i>Gets the status of all studios </i>\n" +
             "- <code>train_all</code>: <i>Starts training for all studios (with 5 minutes delay between each start)  </i>+ \n" +
             "- <code>train_all force_new_run</code>: <i>Starts training for all studios with a forced new run in each server </i> \n" +
-            "- <code>stop_training</code>: <i>Stops further initiations of training </i>"
+            "- <code>stop_training</code>: <i>Stops further initiations of training </i> \n" +
+            "- <code>training_stat studio_name</code> : <i>Gets the training status of the specified studio </i>\n"
         bot.sendMessage(chatId, textToSend, { parse_mode: 'HTML' })
     }
 })

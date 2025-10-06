@@ -1,20 +1,20 @@
 import sys, os, json
 from utils import *
 
-action = sys.argv[1] if len(sys.argv) > 1 else "{}"
-
-json_string = sys.argv[2] if len(sys.argv) > 2 else "{}"
-param = json.loads(json_string)
-
-forceNewRun = sys.argv[3] if len(sys.argv) > 3 else False
+params = json.loads(sys.argv[1])
+action = params.get("action", "")
+credentials = json.loads(params.get("credentials", {}))
+forceNewRun = params.get("forceNewRun", False)
 
 if action == "stop_single":
-    stopStudio(param)
+    stopStudio(credentials)
 elif action == "start_single":
-    startStudio(param)
+    startStudio(credentials)
 elif action == "train_single":
-    startTraining(param, forceNewRun)
+    startTraining(credentials, forceNewRun)
 elif action == "status_single":
-    getStatus(param)
+    getStatus(credentials)
+elif action == "training_stat":
+    uploadTrainingImages(credentials, params["botToken"], params["chatId"])
 else:
     print("No valid action provided")
