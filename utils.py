@@ -688,7 +688,7 @@ def loadNetwork(fileName, algorithm, **kwargs):
                 
                 # Check if the file is a dictionary
                 if not isinstance(__data, dict): raise Exception(f"Couldn't load the file. File {fileName} is not a dictionary")
-
+                
                 # Actor network
                 kwargs["actor_network"].load_state_dict(__data["actor_network_state_dict"]) # Model weights
                 kwargs["optimizer_actor"].load_state_dict(__data["optimizer_actor_state_dict"]) # Optimizer
@@ -709,6 +709,7 @@ def loadNetwork(fileName, algorithm, **kwargs):
                     kwargs["optimizer_critic"],
                     kwargs["trainingParams"][0],  # startEpisode
                     kwargs["trainingParams"][1],  # lstHistory
+                    kwargs["trainingParams"][2],  # timestep
                 )
 
             except Exception as e:
@@ -727,7 +728,7 @@ def modelParamParser():
     # Add necessary arguments
     parser.add_argument("--name", "-n", type = str, default = "unknown", help = "The name of the model")
     parser.add_argument("--env", "-e", type = str, default = "unknown", help = "The environment name")
-    parser.add_argument("--env_options", "-eops", type = str, default = "unknown", help = "The options for the environment in JSON format")
+    parser.add_argument("--env_options", "-eops", type = str, default = "{}", help = "The options for the environment in JSON format")
     parser.add_argument("--algorithm", "-alg", type = str, default = "DDQN", help = "The RL algorithm to use (PPO or DDQN)")
     parser.add_argument("--algorithm_options", "-algops", type = str, default = "", help = "The options for the RL algorithm in JSON format")
     parser.add_argument("--network", "-net", type = str, default = "ann", help = "The network architecture to use (ann or snn)")
@@ -827,11 +828,24 @@ def get_next_run_number_and_create_folder(continueLastRun = False, args = None):
                 pastConfig = json.load(file)
                 currentConfig = vars(args)
 
+                def _normalize(v):
+                    if isinstance(v, str):
+                        s = v.strip()
+                        if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+                            try:
+                                return json.loads(s)
+                            except Exception:
+                                return v
+                    return v
+
                 for key in pastConfig.keys():
-                    if key in currentConfig and pastConfig[key] != currentConfig[key]:
-                        print(f"Configuration for '{key}' has changed from {pastConfig.get(key)} to {currentConfig[key]}. Creating a new run folder.")
-                        next_run_number += 1
-                        break
+                    if key in currentConfig:
+                        past = pastConfig.get(key)
+                        curr = _normalize(currentConfig[key])
+                        if past != curr:
+                            print(f"Configuration for '{key}' has changed from {past} to {curr}. Creating a new run folder.")
+                            next_run_number += 1
+                            break
     
     # Create new folder with the next run number
     new_folder_path = os.path.join(runs_data_dir, str(next_run_number))

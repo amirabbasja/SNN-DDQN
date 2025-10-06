@@ -152,31 +152,39 @@ class PPO:
 
         # Necessary data to be collected during training
         self._last100WinPercentage = 0.0
+        self.overallTimestep = 0
         self.startEpisode = 0
         self.lstHistory = None # A list of dictionaries for storing episode history
         self.lstActions = [] # Fills only if debugMode is active
         self.avgReward = -float('inf') # The average reward of the last avgWindow episodes
 
         if self.continueLastRun:
-            # Load necessary parameters to resume the training from most recent run 
-            load_params = {
-                "critic_network": self.criticNetwork,
-                "actor_network": self.actorNetwork,
-                "optimizer_critic": self.optimCritic,
-                "optimizer_actor": self.optimActor,
-                "trainingParams": [
-                    self.startEpisode, 
-                    self.lstHistory, 
-                ]
-            }
+            try:
+                # Load necessary parameters to resume the training from most recent run 
+                load_params = {
+                    "critic_network": self.criticNetwork,
+                    "actor_network": self.actorNetwork,
+                    "optimizer_critic": self.optimCritic,
+                    "optimizer_actor": self.optimActor,
+                    "trainingParams": [
+                        self.startEpisode, 
+                        self.lstHistory, 
+                        self.overallTimestep
+                    ]
+                }
 
-            # NUM_ENVS is a constant and is defined when running the script for the first time, So we disregard re-loading it
-            self.actorNetwork, self.criticNetwork, self.optimActor, self.optimCritic, self.startEpisode, self.lstHistory = loadNetwork(os.path.join(self.runSavePath, self.saveFileName), "PPO", **load_params)
-            
-            self.actorNetwork = self.actorNetwork.to(self.device, dtype = self.dtype)
-            self.criticNetwork = self.criticNetwork.to(self.device, dtype = self.dtype)
+                # NUM_ENVS is a constant and is defined when running the script for the first time, So we disregard re-loading it
+                self.actorNetwork, self.criticNetwork, self.optimActor, self.optimCritic, self.startEpisode, self.lstHistory, self.overallTimestep = loadNetwork(os.path.join(self.runSavePath, self.saveFileName), "PPO", **load_params)
+                
+                self.actorNetwork = self.actorNetwork.to(self.device, dtype = self.dtype)
+                self.criticNetwork = self.criticNetwork.to(self.device, dtype = self.dtype)
 
-            print("Continuing from episode:", self.startEpisode)
+                print("Continuing from episode:", self.startEpisode)
+            except Exception as e:
+                print("Could not continue from the last run. Starting a new session. Error:", e)
+                self.startEpisode = 0
+                self.lstHistory = []
+                self.overallTimestep = 0
 
         print(f"Device is: {self.device}")
 
@@ -309,6 +317,7 @@ class PPO:
                 if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
                     backUpData = {
                         "episode": episodeNumber,
+                        "timestep": self.overallTimestep,
                         'actor_network_state_dict':  self.actorNetwork.state_dict(),
                         'critic_network_state_dict': self.criticNetwork.state_dict(),
                         'optimizer_actor_state_dict': self.optimActor.state_dict(),
@@ -383,8 +392,8 @@ class PPO:
         actorLossMem = []
         self.lstHistory = [] if self.lstHistory == None else self.lstHistory
 
-        t = 0
-        episode = 0
+        t = self.overallTimestep
+        episode = self.startEpisode
         _lastPrintTime = time.time()
         _trainingStartTime = time.time()
         _latestCheckpoint = 0
@@ -398,7 +407,8 @@ class PPO:
             
             # Increment time step
             t += np.sum(batchEpisodeLengths)
-            
+            self.overallTimestep = t
+
             # Calculate V_{phi,k}
             V, _, _ = self.evaluate(batchObs, batchActions)
 

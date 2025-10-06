@@ -164,12 +164,26 @@ def send_photo_with_retry(
     return False
 
 
+def _read_album_caption(run_dir: str) -> str:
+    td_path = os.path.join(run_dir, "training_details.json")
+    if os.path.isfile(td_path):
+        try:
+            with open(td_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return content[:1024]
+        except Exception:
+            pass
+    session_name = os.environ.get("SESSION_NAME") or os.environ.get("session_name") or "unknown"
+    return f"session_name: {session_name}"
+
+
 def send_media_group_with_retry(
     bot_token: str,
     chat_id: str,
     image_paths: t.List[str],
     timeout: float = 60.0,
     max_retries: int = 3,
+    album_caption: t.Optional[str] = None,
 ) -> bool:
     # Sends up to 10 images as a single album using sendMediaGroup.
     # Skips files over 10MB (they should be sent as documents separately).
@@ -188,11 +202,13 @@ def send_media_group_with_retry(
             for idx, path in enumerate(batch):
                 attach_key = f"file{idx}"
                 files[attach_key] = (os.path.basename(path), open(path, "rb"))
-                media.append({
+                item = {
                     "type": "photo",
                     "media": f"attach://{attach_key}",
-                    "caption": os.path.basename(path),
-                })
+                }
+                if idx == 0 and album_caption:
+                    item["caption"] = album_caption[:1024]
+                media.append(item)
 
             data = {
                 "chat_id": chat_id,
@@ -294,10 +310,13 @@ def main(argv: t.List[str]) -> int:
     ok = 0
     failed = 0
 
+    # Read album caption from training_details.json or fallback to session_name
+    album_caption = _read_album_caption(target_dir)
+
     # Send albums in batches of up to 10
     for start in range(0, len(small_images), 10):
         batch = small_images[start:start + 10]
-        success = send_media_group_with_retry(bot_token, chat_id, batch)
+        success = send_media_group_with_retry(bot_token, chat_id, batch, album_caption=album_caption)
         status = "OK" if success else "FAIL"
         batch_names = [os.path.relpath(p, target_dir) for p in batch]
         print(f"[ALBUM {start//10 + 1}] {status} - {batch_names}")

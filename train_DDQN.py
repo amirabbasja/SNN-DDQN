@@ -12,6 +12,7 @@ parser = modelParamParser()
 args, unknown = parser.parse_known_args()
 
 # Deserialize the JSON strings into dictionaries
+args.env_options = json.loads(args.env_options)
 args.network_options = json.loads(args.network_options)
 args.algorithm_options = json.loads(args.algorithm_options)
 
