@@ -166,13 +166,59 @@ def send_photo_with_retry(
 
 def _read_album_caption(run_dir: str) -> str:
     td_path = os.path.join(run_dir, "training_details.json")
-    if os.path.isfile(td_path):
+    conf_path = os.path.join(run_dir, "conf.json")
+
+    def _round_numbers(obj):
+        if isinstance(obj, float):
+            return round(obj, 3)
+        if isinstance(obj, dict):
+            return {k: _round_numbers(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_round_numbers(v) for v in obj]
+        return obj
+
+    def _safe_json_load(path: str):
+        if not os.path.isfile(path):
+            return None
         try:
-            with open(td_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            return content[:1024]
+            with open(path, "r", encoding="utf-8") as f:
+                raw = f.read()
+            return json.loads(raw)
         except Exception:
-            pass
+            return None
+
+    def _format_kv_lines(d: dict) -> str:
+        lines = []
+        for k, v in d.items():
+            if isinstance(v, (dict, list)):
+                v_str = json.dumps(_round_numbers(v), ensure_ascii=False)
+            else:
+                v_str = str(_round_numbers(v))
+            lines.append(f"- {k}: {v_str}")
+        return "\n".join(lines)
+
+    td_json = _safe_json_load(td_path)
+    conf_json = _safe_json_load(conf_path)
+
+    if td_json is not None or conf_json is not None:
+        parts = []
+        if td_json is not None and isinstance(td_json, dict):
+            parts.append("Training Details")
+            parts.append(_format_kv_lines(_round_numbers(td_json)))
+        elif td_json is not None:
+            # Fallback if training_details.json isn't a dict
+            parts.append("Training Details")
+            parts.append(json.dumps(_round_numbers(td_json), ensure_ascii=False, indent=4))
+
+        if conf_json is not None:
+            parts.append("=========")
+            parts.append("Config")
+            parts.append(json.dumps(_round_numbers(conf_json), ensure_ascii=False, indent=4))
+
+        caption = "\n".join(parts)
+        caption = caption.replace('"', "").replace("{", "").replace("}", "").replace(",", " ")
+        return caption[:1024]
+
     session_name = os.environ.get("SESSION_NAME") or os.environ.get("session_name") or "unknown"
     return f"session_name: {session_name}"
 
