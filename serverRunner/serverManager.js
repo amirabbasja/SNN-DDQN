@@ -194,6 +194,26 @@ bot.on('message', async (msg) => {
 
             await new Promise(resolve => setTimeout(resolve, 4 * 60 * 60 * 1000)) // A 4 hour delay
         }
+    } else if (text.toLowerCase()?.startsWith("train_single")){
+
+        // gets status for a single studop
+        const parts = text.split(" ")
+        let studioName = parts[1]
+        if(!studioName || Object.keys(studios).indexOf(studioName) === -1){
+            bot.sendMessage(chatId, "Please provide a correct studio name. Usage: status <studio_name>")
+            return
+        }
+        const params = { action: "status_single", credentials: JSON.stringify(studios[studioName]) }
+        const result = await runPythonScript("./serverRunner/studioManager.py", params)
+
+        if(result === "Stopped"){
+            const params = { action: "train_single", credentials: JSON.stringify(studios[studioName]), forceNewRun: forceNewRun}
+            runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            bot.sendMessage(chatId, `Starting studio ${studios[studioName].user} for training `).then(sentMsg => {lastMessageId = sentMsg.message_id;})
+        } else {
+            bot.sendMessage(chatId, `Studio ${studios[studioName].user} is not Stopped. Needs to be stopped to start training `)
+        }
     } else if(text.toLowerCase() === "stop_training"){
         infiniteTraining = false
         bot.sendMessage(chatId, "Infinite training loop stopped. Training will not continue after active sessions are done.")
@@ -214,8 +234,9 @@ bot.on('message', async (msg) => {
             "- <code>stop_all</code>: <i>Stops all running studios </i>\n" +
             "- <code>status studio_name</code>: <i>Gets the status of the specified studio </i>\n" +
             "- <code>status_all</code>: <i>Gets the status of all studios </i>\n" +
-            "- <code>train_all</code>: <i>Starts training for all studios (with 5 minutes delay between each start)  </i>+ \n" +
+            "- <code>train_all</code>: <i>Starts training for all studios (with 5 minutes delay between each start)  </i> \n" +
             "- <code>train_all force_new_run</code>: <i>Starts training for all studios with a forced new run in each server </i> \n" +
+            "- <code>train_single studio_name <optional:force_new_run></code>: <i>Starts training a specific studio </i> \n" +
             "- <code>stop_training</code>: <i>Stops further initiations of training </i> \n" +
             "- <code>training_stat studio_name</code> : <i>Gets the training status of the specified studio </i>\n"
         bot.sendMessage(chatId, textToSend, { parse_mode: 'HTML' })
