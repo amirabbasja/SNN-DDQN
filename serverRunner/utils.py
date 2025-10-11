@@ -53,6 +53,7 @@ def getStatus(credentials):
     
     try:
         status = str(_studio.status)
+        print(status)
         return status
     except Exception as e:
         return f"Error fetching status for {credentials['user']}: {e}"

@@ -18,7 +18,7 @@ function runPythonScript(loc, param, timedKill = false) {
     return new Promise((resolve, reject) => {
         // Spawn a child process to run the Python script
         let args = []
-        args = [loc, json.stringify(param)]
+        args = [loc, JSON.stringify(param)]
         
         const pythonProcess = spawn('python', args)
 
@@ -236,7 +236,7 @@ bot.on('message', async (msg) => {
             "- <code>status_all</code>: <i>Gets the status of all studios </i>\n" +
             "- <code>train_all</code>: <i>Starts training for all studios (with 5 minutes delay between each start)  </i> \n" +
             "- <code>train_all force_new_run</code>: <i>Starts training for all studios with a forced new run in each server </i> \n" +
-            "- <code>train_single studio_name <optional:force_new_run></code>: <i>Starts training a specific studio </i> \n" +
+            "- <code>train_single studio_name optional:force_new_run</code>: <i>Starts training a specific studio </i> \n" +
             "- <code>stop_training</code>: <i>Stops further initiations of training </i> \n" +
             "- <code>training_stat studio_name</code> : <i>Gets the training status of the specified studio </i>\n"
         bot.sendMessage(chatId, textToSend, { parse_mode: 'HTML' })
