@@ -334,8 +334,8 @@ class PPO:
             if self.uploadToCloud:
                 raise Exception("Upload to cloud not implemented for PPO yet")
             
-            # Plot the progress
-            if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
+            # Save progress info (with higher frequency)
+            if (episodeNumber + 1) % 5 == 0 or episodeNumber == 2:
                 # Save the details
                 episodeData = {
                     "session_name": self.sessionName,
@@ -348,6 +348,8 @@ class PPO:
                 with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
                     json.dump(episodeData, f, indent=2)
                 
+            # Plot the progress
+            if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
                 # Plot the progress
                 self.plotProgress()
 

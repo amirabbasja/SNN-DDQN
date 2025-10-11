@@ -501,8 +501,8 @@ class DDQN():
                     backUpToCloud(obj = __data, objName = f"{self.sessionName}-{self.saveFileName}", info = self.uploadInfo)
                     lastUploadTime = time.time()
 
-            # Plot the progress
-            if (episode + 1) % 100 == 0 or episode == 2:
+            # Save progress info (With higher frequency)
+            if (episode + 1) % 5 == 0 or episode == 2:
                 # Save the details
                 episodeData = {
                     "session_name": self.sessionName,
@@ -515,6 +515,9 @@ class DDQN():
                 with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
                     json.dump(episodeData, f, indent=2)
                 
+
+            # Plot the progress
+            if (episode + 1) % 100 == 0 or episode == 2:
                 # Plot the details
                 histDf = pd.DataFrame(self.lstHistory)
 
