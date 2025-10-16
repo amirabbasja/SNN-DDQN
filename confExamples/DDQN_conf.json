@@ -13,6 +13,8 @@
         "nEpisodes": 15000,
         "maxNumTimeSteps": 1000
     },
+    "env": "LunarLander-v3",
+    "env_options": {},
     "network": "snn",
     "network_options": {
         "hidden_layers": [64, 64],

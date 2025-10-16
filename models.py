@@ -40,7 +40,11 @@ class qNetwork_SNN(nn.Module):
         
         Args:
             layers (list): layers is a list of the form: [inputSize, ... Hidden Layers Sizes ... , outputSize]
-            **kwargs: Additional parameters including "beta" and "tSteps"
+            **kwargs: Can contain following values
+                "beta" and "tSteps": Required for defining the spiking neuron structure
+                positiveInitWeights (bool): If True, all initial weights of the network will be positive values, 
+                avoiding generation of negative potentials in neurons in the earlier stages of training.
+                noOutSpikes (bool): If True, the output will not have spike neurons
         """
         super().__init__()
 
@@ -56,6 +60,9 @@ class qNetwork_SNN(nn.Module):
             self.DEBUG = kwargs["DEBUG"]
         else:
             self.DEBUG = False
+
+        # New flag for positive-only initialization
+        self.positiveInitWeights = kwargs.get("positiveInitWeights", False)
 
         # For saving information. parameters will be not-None only if the DEBUG flag is True
         self.info = {
@@ -80,6 +87,14 @@ class qNetwork_SNN(nn.Module):
         # Register layers as module lists for proper parameter management
         self.layers = nn.ModuleList(layers)
         self.lifLayers = nn.ModuleList(lifLayers)
+
+        # Apply positive-only initialization if requested
+        if self.positiveInitWeights:
+            for layer in self.layers:
+                if isinstance(layer, nn.Linear):
+                    layer.weight.data.abs_()
+                    if layer.bias is not None:
+                        layer.bias.data.abs_()
 
     def forward(self, x):
         # Initialize potentials for all layers (hidden + output)

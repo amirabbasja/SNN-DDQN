@@ -344,9 +344,9 @@ class DDQN():
         if delay < (time.time() - lastPrintTime):
             os.system('cls' if os.name == 'nt' else 'clear')
             lastPrintTime = time.time()
-            print(f"ElapsedTime: {int(time.time() - trainingStartTime): <5}s | Episode: {kwargs["episode"]: <5} | Timestep: {kwargs["t"]: <5} | The average of the {self.avgWindow: <5} episodes is: {int(kwargs["epPointAvg"]): <5}")
-            print(f"Latest chekpoint: {kwargs["latestCheckpoint"]} | Speed {kwargs["t"]/(time.time()-kwargs["episodeStartTime"]+1e-9):.1f} tps | ebsilon: {self.ebsilon:.3f} ")
-            print(f"Remaining time of this run: {kwargs["finishTime"] - time.time():.1f}s")
+            print(f'ElapsedTime: {int(time.time() - trainingStartTime):<5}s | Episode: {kwargs["episode"]:<5} | Timestep: {kwargs["t"]:<5} | The average of the {self.avgWindow:<5} episodes is: {kwargs["epPointAvg"]:<5.2f}')
+            print(f'Latest chekpoint: {kwargs["latestCheckpoint"]} | Speed {kwargs["t"]/(time.time()-kwargs["episodeStartTime"]+1e-9):.1f} tps | ebsilon: {self.ebsilon:.3f}')
+            print(f'Remaining time of this run: {kwargs["finishTime"] - time.time():.1f}s')
             print(f"Memory details: {self.mem.len}")
         
         return lastPrintTime
