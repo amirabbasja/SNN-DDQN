@@ -731,8 +731,12 @@ def modelParamParser():
     parser.add_argument("--env_options", "-eops", type = str, default = "{}", help = "The options for the environment in JSON format")
     parser.add_argument("--algorithm", "-alg", type = str, default = "DDQN", help = "The RL algorithm to use (PPO or DDQN)")
     parser.add_argument("--algorithm_options", "-algops", type = str, default = "", help = "The options for the RL algorithm in JSON format")
-    parser.add_argument("--network", "-net", type = str, default = "ann", help = "The network architecture to use (ann or snn)")
+    parser.add_argument("--network", "-net", type = str, default = "", help = "The network architecture to use (ann or snn)")
     parser.add_argument("--network_options", "-netops", type = str, default = "", help = "The options for the network in JSON format")
+    parser.add_argument("--network_actor", "-net_actor", type = str, default = "", help = "The network_actor architecture to use (ann or snn)")
+    parser.add_argument("--network_actor_options", "-netops_actor", type = str, default = "", help = "The options for the network_actor in JSON format")
+    parser.add_argument("--network_critic", "-net_critic", type = str, default = "", help = "The network_critic architecture to use (ann or snn)")
+    parser.add_argument("--network_critic_options", "-netops_critic", type = str, default = "", help = "The options for the network_critic in JSON format")
 
     parser.add_argument("--continue_run", "-c", action = "store_true", help = "Continue the last run")
     parser.add_argument("--agents", "-a", type = int, default = 1, help = "Number rof agents")

@@ -269,24 +269,48 @@ if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.gete
 trainingEpoch = 1
 while time.time() < endTime:
     # Run parameters
-    argsDict = {
-        "name": data["name"],
-        "env": data["env"],
-        "env_options": data["env_options"],
-        "algorithm": data["algorithm"],
-        "algorithm_options": data["algorithm_options"],
-        "network": data["network"],
-        "network_options": data["network_options"],
-        "continue_run": data["continue_run"], # If --forcenewrun was passed, override config
-        "agents": data["agents"],
-        "extra_info": "",
-        "max_run_time": data["max_run_time"], # In seconds
-        "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
-        "upload_to_cloud": data["upload_to_cloud"],
-        "local_backup": data["local_backup"],
-        "debug": data["debug"],
-        "train_finish_timestamp": endTime,
-    }
+    if data["algorithm"] == "DDQN":
+        argsDict = {
+            "name": data["name"],
+            "env": data["env"],
+            "env_options": data["env_options"],
+            "algorithm": data["algorithm"],
+            "algorithm_options": data["algorithm_options"],
+            "network": data["network"],
+            "network_options": data["network_options"],
+            "continue_run": data["continue_run"], # If --forcenewrun was passed, override config
+            "agents": data["agents"],
+            "extra_info": "",
+            "max_run_time": data["max_run_time"], # In seconds
+            "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
+            "upload_to_cloud": data["upload_to_cloud"],
+            "local_backup": data["local_backup"],
+            "debug": data["debug"],
+            "train_finish_timestamp": endTime,
+        }
+    elif  data["algorithm"] == "PPO":
+        argsDict = {
+            "name": data["name"],
+            "env": data["env"],
+            "env_options": data["env_options"],
+            "algorithm": data["algorithm"],
+            "algorithm_options": data["algorithm_options"],
+            "network_actor": data["network_actor"],
+            "network_actor_options": data["network_actor_options"],
+            "network_critic": data["network_critic"],
+            "network_critic_options": data["network_critic_options"],
+            "continue_run": data["continue_run"], # If --forcenewrun was passed, override config
+            "agents": data["agents"],
+            "extra_info": "",
+            "max_run_time": data["max_run_time"], # In seconds
+            "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
+            "upload_to_cloud": data["upload_to_cloud"],
+            "local_backup": data["local_backup"],
+            "debug": data["debug"],
+            "train_finish_timestamp": endTime,
+        }
+    else:
+        raise ValueError(f"Unknown algorithm specified in conf.json: {data['algorithm']}")
 
     # Override continue_run if needed
     if forceNewRun:
@@ -317,6 +341,14 @@ while time.time() < endTime:
         
         if name == "network_options":
             scriptArgs.extend([f"--network_options", json.dumps(value)])
+            continue
+        
+        if name == "network_actor_options":
+            scriptArgs.extend([f"--network_actor_options", json.dumps(value)])
+            continue
+        
+        if name == "network_critic_options":
+            scriptArgs.extend([f"--network_critic_options", json.dumps(value)])
             continue
         
         scriptArgs.extend([f"--{name}", str(value)])

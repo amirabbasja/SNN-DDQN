@@ -15,12 +15,15 @@
     },
     "env": "LunarLander-v3",
     "env_options": {},
-    "network": "ann",
-    "network_options": {
-        "hidden_layers_actor": [64, 64],
-        "hidden_layers_critic": [64, 64],
+    "network_actor": "ann",
+    "network_actor_options": {
+        "hidden_layers": [64, 64],
         "snn_tSteps": 25,
         "snn_beta": 0.95
+    },
+    "network_critic": "ann",
+    "network_critic_options": {
+        "hidden_layers": [64, 64]
     },
     "continue_run": true,
     "agents": 1,

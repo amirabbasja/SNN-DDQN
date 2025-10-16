@@ -77,13 +77,17 @@ class PPO:
         assert "maxEpisodesCount" in args["algorithm_options"], "Maximum number of episodes to train is required in args"
 
         # networks
-        assert "network" in args, "network is required in args (e.g., ann or snn)"
-        assert "network_options" in args, "network options are required in args"
-        assert "hidden_layers_actor" in args["network_options"], "Hidden layers for actor network is required in args"
-        assert "hidden_layers_critic" in args["network_options"], "Hidden layers for critic network is required in args"
-        if args["network"] == "snn":
-            assert "snn_beta" in args["network_options"], "SNN beta parameter is required in args for SNN"
-            assert "snn_tSteps" in args["network_options"], "SNN time steps parameter is required in args for SNN"
+        assert "network_actor" in args, "actor network type is required in args (e.g., ann or snn)"
+        assert "network_actor_options" in args, "actor network options is required in args (e.g., ann or snn)"
+        assert "network_critic" in args, "critic network type is required in args (e.g., ann or snn)"
+        assert "network_critic_options" in args, "critic network options is required in args (e.g., ann or snn)"
+        assert "hidden_layers" in args["network_critic_options"], "Hidden layers for critic network is required in args"
+        if args["network_actor"] == "snn":
+            assert "snn_beta" in args["network_actor_options"], "SNN beta parameter is required in args for SNN"
+            assert "snn_tSteps" in args["network_actor_options"], "SNN time steps parameter is required in args for SNN"
+        if args["network_critic"] == "snn":
+            assert "snn_beta" in args["network_critic_options"], "SNN beta parameter is required in args for SNN"
+            assert "snn_tSteps" in args["network_critic_options"], "SNN time steps parameter is required in args for SNN"
         assert "actorNetwork" in networks, "actorNetwork model is required in networks dictionary"
         assert "criticNetwork" in networks, "criticNetwork model is required in networks dictionary"
         assert "optimActor" in networks, "Actor network's optimizer is required in networks dictionary"
@@ -139,7 +143,7 @@ class PPO:
         self.saveFileName = f"{self.projectName}_{self.modelDetails}.pth"
 
         # Neural network models and optimizers
-        self.networkArchitecture = args["network"]
+        self.networkArchitecture = args["network_actor"]
         self.actorNetwork = networks['actorNetwork'].to(self.device, dtype = self.dtype)
         self.criticNetwork = networks['criticNetwork'].to(self.device, dtype = self.dtype)
         self.optimActor = networks['optimActor']
@@ -248,7 +252,7 @@ class PPO:
 
                 if self.networkArchitecture == "snn":
                     _totalSpikes = 0
-                    _spikesPerLayer = [0 for _ in range(len(self.criticNetwork.layers))]
+                    _spikesPerLayer = [0 for _ in range(len(self.actorNetwork.layers))]
 
             terminated, truncated = False, False
             episodeActions = []

@@ -9,10 +9,13 @@ from PPO import PPO
 # Parse model arguments
 parser = modelParamParser()
 args, unknown = parser.parse_known_args()
+print(args)
+print(unknown)
 
 # Deserialize the JSON strings into dictionaries
 args.env_options = json.loads(args.env_options)
-args.network_options = json.loads(args.network_options)
+args.network_actor_options = json.loads(args.network_actor_options)
+args.network_critic_options = json.loads(args.network_critic_options)
 args.algorithm_options = json.loads(args.algorithm_options)
 
 uploadInfo = None
@@ -47,14 +50,20 @@ nActions = env.action_space.n # Number of actions
 actionSpace = np.arange(nActions).tolist() 
 
 # Make the model objects
-if args.network == "ann":
-    actorNetwork = qNetwork_ANN([stateSize[0], *args.network_options["hidden_layers_actor"], nActions])
-    criticNetwork = qNetwork_ANN([stateSize[0], *args.network_options["hidden_layers_critic"], 1])
-elif args.network == "snn":
-    actorNetwork = qNetwork_SNN([stateSize[0], *args.network_options["hidden_layers_actor"], nActions], beta = args.network_options["snn_beta"], tSteps = args.network_options["snn_tSteps"], DEBUG = args.debug)
-    criticNetwork = qNetwork_SNN([stateSize[0], *args.network_options["hidden_layers_critic"], 1], beta = args.network_options["snn_beta"], tSteps = args.network_options["snn_tSteps"], DEBUG = args.debug)
+if args.network_actor == "ann":
+    actorNetwork = qNetwork_ANN([stateSize[0], *args.network_actor_options["hidden_layers"], nActions])
+elif args.network_actor == "snn":
+    actorNetwork = qNetwork_SNN([stateSize[0], *args.network_actor_options["hidden_layers"], nActions], beta = args.network_actor_options["snn_beta"], tSteps = args.network_actor_options["snn_tSteps"], DEBUG = args.debug)
 else:
-    raise ValueError(f"Unknown network: {args.network}")
+    raise ValueError(f"Unknown network: {args.network_actor}")
+
+if args.network_critic == "ann":
+    criticNetwork = qNetwork_ANN([stateSize[0], *args.network_critic_options["hidden_layers"], 1])
+elif args.network_critic == "snn":
+    criticNetwork = qNetwork_SNN([stateSize[0], *args.network_critic_options["hidden_layers"], 1], beta = args.network_critic_options["snn_beta"], tSteps = args.network_critic_options["snn_tSteps"], DEBUG = args.debug)
+else:
+    raise ValueError(f"Unknown network: {args.network_critic}")
+
 
 # TODO: Add gradient clipping to the optimizer for avoiding exploding gradients
 # Suitable optimizer for gradient descent
