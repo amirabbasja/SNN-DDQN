@@ -78,6 +78,15 @@ def create_zip(session_name, runs_root, output_zip):
     return len(run_dirs), included_files
 
 
+def get_telegram_credentials(env_path):
+    env = parse_env_file(env_path)
+    chat_id = env.get("telegram_chat_id")
+    bot_token = env.get("telegram_bot_token")
+    if not chat_id or not bot_token:
+        raise RuntimeError("Missing 'telegram_chat_id' or 'telegram_bot_token' in .env")
+    return chat_id, bot_token
+
+
 def main():
     project_root = os.path.dirname(os.path.abspath(__file__))
     env_path = os.path.join(project_root, ".env")
@@ -88,9 +97,29 @@ def main():
 
     num_runs, num_files = create_zip(session_name, runs_root, output_zip)
 
+    # Upload to Telegram
+    chat_id, bot_token = get_telegram_credentials(env_path)
+    upload_to_telegram(output_zip, chat_id, bot_token)
+    print(f"Uploaded zip to Telegram chat {chat_id}")
     print(f"Created zip: {output_zip}")
     print(f"Runs included: {num_runs}")
     print(f"Files included: {num_files}")
+
+
+def upload_to_telegram(file_path, chat_id, bot_token):
+    try:
+        import requests  # imported lazily to avoid global dependency
+    except ImportError:
+        raise RuntimeError("The 'requests' package is required. Install via 'pip install requests'.")
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+    with open(file_path, "rb") as f:
+        files = {"document": (os.path.basename(file_path), f, "application/zip")}
+        data = {"chat_id": str(chat_id)}
+        resp = requests.post(url, data=data, files=files, timeout=60)
+
+    if resp.status_code != 200:
+        raise RuntimeError(f"Telegram upload failed: {resp.status_code} {resp.text}")
 
 
 if __name__ == "__main__":
