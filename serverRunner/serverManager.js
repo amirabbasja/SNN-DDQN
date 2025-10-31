@@ -226,6 +226,15 @@ bot.on('message', async (msg) => {
         }
         const params = { action: "training_stat", credentials: JSON.stringify(studios[studioName]), botToken: token, chatId: chatId }
         await runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
+    } else if(text.toLowerCase().startsWith("upload_all_results")){
+        const parts = text.split(" ")
+        let studioName = parts[1]
+        if(!studioName || Object.keys(studios).indexOf(studioName) === -1){
+            bot.sendMessage(chatId, "Please provide a correct studio name. Usage: training_stat <studio_name>")
+            return
+        }
+        const params = { action: "upload_results", credentials: JSON.stringify(studios[studioName]), botToken: token, chatId: chatId }
+        await runPythonScript("./serverRunner/studioManager.py", params, true) // Not awaiting it, with timed kill
     } else {
         // If the command is not recognized, send a help message
         textToSend = "<b>Help: </b>\n\n" +
@@ -238,7 +247,8 @@ bot.on('message', async (msg) => {
             "- <code>train_all force_new_run</code>: <i>Starts training for all studios with a forced new run in each server </i> \n" +
             "- <code>train_single studio_name optional:force_new_run</code>: <i>Starts training a specific studio </i> \n" +
             "- <code>stop_training</code>: <i>Stops further initiations of training </i> \n" +
-            "- <code>training_stat studio_name</code> : <i>Gets the training status of the specified studio </i>\n"
+            "- <code>training_stat studio_name</code> : <i>Gets the training status of the specified studio </i>\n" +
+            "- <code>upload_all_results studio_name</code> : <i>Uploads all results from a specified studio in a separate zip file </i>\n"
         bot.sendMessage(chatId, textToSend, { parse_mode: 'HTML' })
     }
 })

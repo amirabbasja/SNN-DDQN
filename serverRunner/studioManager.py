@@ -16,5 +16,7 @@ elif action == "status_single":
     getStatus(credentials)
 elif action == "training_stat":
     uploadTrainingImages(credentials, params["botToken"], params["chatId"])
+elif action == "upload_results":
+    uploadAllResults(credentials, params["botToken"], params["chatId"])    
 else:
     print("No valid action provided")

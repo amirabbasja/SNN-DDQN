@@ -6,7 +6,7 @@ def _setCredentials(credentials):
     os.environ['LIGHTNING_API_KEY'] = credentials["apiKey"]
     os.environ['LIGHTNING_USER_ID'] = credentials["userID"]
 
-def with_credentials(func):
+def withCredentials(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         credentials = args[0] if args else kwargs.get("credentials")
@@ -16,7 +16,7 @@ def with_credentials(func):
         return func(*args, **kwargs)
     return wrapper
 
-@with_credentials
+@withCredentials
 def stopStudio(credentials):
     _studio = Studio(
         credentials["studioName"],       # studio name
@@ -31,7 +31,7 @@ def stopStudio(credentials):
     except Exception as e:
         print(f"Error stopping studio. Error: {e}")
 
-@with_credentials
+@withCredentials
 def startStudio(credentials):
     _studio = Studio(
         credentials["studioName"],       # studio name
@@ -42,7 +42,7 @@ def startStudio(credentials):
     
     _studio.start()
 
-@with_credentials
+@withCredentials
 def getStatus(credentials):
     _studio = Studio(
         credentials["studioName"],       # studio name
@@ -58,21 +58,34 @@ def getStatus(credentials):
     except Exception as e:
         return f"Error fetching status for {credentials['user']}: {e}"
 
-@with_credentials
+@withCredentials
 def uploadTrainingImages(credentials, botToken, chatId):
-    _studio = Studio(
-        credentials["studioName"],       # studio name
-        credentials["teamspaceName"],    # teamspace name
-        user = credentials["user"],
-        create_ok = False
-    )
-    
     try:
         runCommand(credentials, f"python '/teamspace/studios/this_studio/serverRunner/uploadLatestTrainingData.py' --bot-token '{botToken}' --chat-id '{chatId}'")
     except Exception as e:
         print(f"Error uploading training images. Error: {e}")
 
-@with_credentials
+@withCredentials
+def uploadAllResults(credentials, botToken, chatId):
+    _status = getStatus(credentials)
+    if(_status == "Stopping"):
+        while True:
+            print("Studio is stopping. Waiting for it to stop...")
+            _status = getStatus(credentials)
+            if(_status != "Stopping"):
+                break
+            time.sleep(30)
+    
+    if(_status == "Stopped"):
+        startStudio(credentials)
+        time.sleep(10)
+    
+    try:
+        runCommand(credentials, f"python '/teamspace/studios/this_studio/resultAggregator.py'")
+    except Exception as e:
+        print(f"Error uploading results. Error: {e}")
+
+@withCredentials
 def runCommand(credentials, command):
     """
     Runs a designated studio with a specific command
@@ -90,7 +103,7 @@ def runCommand(credentials, command):
     except:
         return False
 
-@with_credentials
+@withCredentials
 def startTraining(credentials, forceNewRun = False):
     """
     Starts a training bout by chekcing the status of the studio and running the command
@@ -127,3 +140,4 @@ def startTraining(credentials, forceNewRun = False):
 
     # Run the command
     runCommand(credentials, credentials["commandToRun"])
+
