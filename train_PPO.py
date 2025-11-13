@@ -9,8 +9,6 @@ from PPO import PPO
 # Parse model arguments
 parser = modelParamParser()
 args, unknown = parser.parse_known_args()
-print(args)
-print(unknown)
 
 # Deserialize the JSON strings into dictionaries
 args.env_options = json.loads(args.env_options)
@@ -39,8 +37,16 @@ if args.upload_to_cloud:
 continueLastRun = args.continue_run
 _, runSavePath = get_next_run_number_and_create_folder(continueLastRun, args)
 
-# Copy the config file to the run folder
-shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
+if "--forcedconfig" in unknown:
+    # IF forced a new config, don't save the default config, save the forced one
+    _config = json.loads(unknown[unknown.index("--forcedconfig") + 1])
+
+    # Save the file
+    with open(os.path.join(runSavePath, "conf.json"), 'w') as f:
+        json.dump(_config, f, indent=4) 
+else:
+    # Copy the config file to the run folder
+    shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
 
 # Make the environment
 env = gym.make(args.env)

@@ -303,8 +303,8 @@ if "--forceconfig" in sys.argv:
 
         try:
             data = json.loads(configString)
-        except json.JSONDecodeError:
-            raise Exception("Invalid JSON format in --config parameter. Configuration should be passed exactly after --config flag.")
+        except Exception as e:
+            raise Exception("Invalid JSON format in --config parameter. Configuration should be passed exactly after --config flag. Error: " + e.__str__())
     else:
         raise Exception("Expected --config when --forceconfig is passed")
 else:
@@ -323,19 +323,6 @@ elif data["algorithm"] == "DDQN":
     scriptPath = "./train_DDQN.py"
 else:
     raise ValueError(f"Unknown algorithm specified in conf.json: {data['algorithm']}")
-
-if 1 < len(sys.argv):
-    if(not isValidPath(sys.argv[1])):
-        print(f"Invalid path provided: {sys.argv[1]}")
-        sys.exit(1)
-    
-    if not os.path.exists(sys.argv[1]):
-        print(f"Provided path doesn't exist: {sys.argv[1]}")
-        sys.exit(1)
-    
-    # Override default path
-    scriptPath = sys.argv[1]
-    print(f"Using script path: {scriptPath}")
 
 startTime = time.time()
 endTime = startTime + data["train_max_time"]  # 3.5 hours
@@ -432,16 +419,14 @@ while time.time() < endTime:
         
         scriptArgs.extend([f"--{name}", str(value)])
 
+    if "--forceconfig" in sys.argv:
+        scriptArgs.extend([f"--forcedconfig", json.dumps(data)])
+    
     venvPath = str(os.getenv("python_venv_path"))
 
     command = [venvPath, scriptPath] + scriptArgs
     
     try:
-        if "tuning" in data:
-            if data["tuning"]:
-                
-                previousRuns = getMatchingRunConfigs("runs_data", data["algorithm"])
-        
         # Set environment to force unbuffered output
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
