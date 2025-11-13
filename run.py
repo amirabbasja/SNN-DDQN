@@ -191,7 +191,7 @@ def isValidPath(string):
     except (ValueError, OSError):
         return False
 
-def send_telegram_message(bot_token, chat_id, message):
+def sendTelegramMessage(bot_token, chat_id, message):
     
     """Send a message to a Telegram user/chat"""
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -201,6 +201,66 @@ def send_telegram_message(bot_token, chat_id, message):
     }
     response = requests.post(url, data=payload)
     return response.json()
+
+def getMatchingRunConfigs(runs_dir="runs_data", current_algorithm=None):
+    """
+    Finds all run configurations in the specified directory that match the current algorithm.
+
+    Args:
+        runs_dir (str): The directory to search for run configurations. Defaults to "runs_data".
+        current_algorithm (str, optional): The current algorithm to match. If None, attempts to read from "conf.json".
+
+    Returns:
+        list: A list of matching run configurations.
+    """
+    if current_algorithm is None:
+        root_conf_path = os.path.join(".", "conf.json")
+        if os.path.isfile(root_conf_path):
+            try:
+                with open(root_conf_path, "r", encoding="utf-8") as f:
+                    root_conf = json.load(f)
+                current_algorithm = root_conf.get("algorithm")
+            except Exception:
+                current_algorithm = None
+
+    if not current_algorithm:
+        return []
+
+    if not os.path.isdir(runs_dir):
+        return []
+
+    matching_configs = []
+    try:
+        for item in os.listdir(runs_dir):
+            run_path = os.path.join(runs_dir, item)
+            if not os.path.isdir(run_path):
+                continue
+
+            conf_path = os.path.join(run_path, "conf.json")
+            if not os.path.isfile(conf_path):
+                candidate = None
+                try:
+                    for child in os.listdir(run_path):
+                        child_conf = os.path.join(run_path, child, "conf.json")
+                        if os.path.isfile(child_conf):
+                            candidate = child_conf
+                            break
+                except Exception:
+                    pass
+                conf_path = candidate if candidate else None
+
+            if conf_path and os.path.isfile(conf_path):
+                try:
+                    with open(conf_path, "r", encoding="utf-8") as f:
+                        conf = json.load(f)
+                    if conf.get("algorithm") == current_algorithm:
+                        matching_configs.append(conf)
+                except Exception:
+                    continue
+    except Exception:
+        return matching_configs
+
+    return matching_configs
 
 # # Install packages
 # subprocess.check_call([sys.executable, "-m", "pip", "install", "swig"])
@@ -229,14 +289,32 @@ if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None:
 
 # Check to see if any new arguments were passed
 forceNewRun = False
-if("--forcenewrun" in sys.argv):
+if "--forcenewrun" in sys.argv:
     forceNewRun = True
     sys.argv.remove("--forcenewrun")
 
-# Open and read run configuration
-assert os.path.exists("conf.json"), "conf.json file doesn't exist"
-with open('conf.json', 'r') as file:
-    data = json.load(file)
+# Check to see if new parameters are forced, if not, default to conf.json file
+if "--forceconfig" in sys.argv:
+    print("Forcing new configuration...")
+
+    if "--config" in sys.argv:
+        configIndex = sys.argv.index("--config")
+        configString = sys.argv[configIndex + 1]
+
+        try:
+            data = json.loads(configString)
+        except json.JSONDecodeError:
+            raise Exception("Invalid JSON format in --config parameter. Configuration should be passed exactly after --config flag.")
+    else:
+        raise Exception("Expected --config when --forceconfig is passed")
+else:
+    # Open and read run configuration
+    assert os.path.exists("conf.json"), "conf.json file doesn't exist"
+    try:
+        with open('conf.json', 'r') as file:
+            data = json.load(file)
+    except Exception:
+        raise Exception("Error reading conf.json file. Please check the file format.")
 
 # Choose script path based on algorithm
 if data["algorithm"] == "PPO":
@@ -264,8 +342,9 @@ endTime = startTime + data["train_max_time"]  # 3.5 hours
 maxRunTime = data["max_run_time"]
 
 if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
-    send_telegram_message(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training started for session {os.getenv('session_name')}")
+    sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training started for session {os.getenv('session_name')}")
 
+argsDict = {} # Save the runs argument
 trainingEpoch = 1
 while time.time() < endTime:
     # Run parameters
@@ -358,6 +437,11 @@ while time.time() < endTime:
     command = [venvPath, scriptPath] + scriptArgs
     
     try:
+        if "tuning" in data:
+            if data["tuning"]:
+                
+                previousRuns = getMatchingRunConfigs("runs_data", data["algorithm"])
+        
         # Set environment to force unbuffered output
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
@@ -388,6 +472,6 @@ while time.time() < endTime:
     trainingEpoch += 1
 
 if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
-    send_telegram_message(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training finished for session {os.getenv('session_name')}. Took {((time.time() - startTime)/3600):.2f} hours.")
+    sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training finished for session {os.getenv('session_name')}. Took {((time.time() - startTime)/3600):.2f} hours.")
 
 print(f"Reached the maximum run time. Trained {trainingEpoch} epochs")
