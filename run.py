@@ -216,16 +216,19 @@ def sendTelegramMessage(bot_token, chat_id, message):
 # Before everything, update to the latest codebase
 load_dotenv()
 if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None and not "--skipupdate" in sys.argv:
-    print("Updating codebase...")
+    try:
+        print("Updating codebase...")
     
-    # First update run.py itself
-    print("Checking for run.py updates...")
-    if update_run_file(os.getenv("code_base_link"), "master"):
-        # If updated, the script will restart and we won't reach here
-        pass
-    else:
-        # Then update other files (excluding run.py)
-        download_repo_files(os.getenv("code_base_link"), "master", ["run.py"], os.path.dirname(os.path.abspath(__file__)))
+        # First update run.py itself
+        print("Checking for run.py updates...")
+        if update_run_file(os.getenv("code_base_link"), "master"):
+            # If updated, the script will restart and we won't reach here
+            pass
+        else:
+            # Then update other files (excluding run.py)
+            download_repo_files(os.getenv("code_base_link"), "master", ["run.py"], os.path.dirname(os.path.abspath(__file__)))
+    except Exception as e:
+        print(f"Error updating codebase: {str(e)}")
 
 if "--onlyupdate" in sys.argv:
     print("Only updated codebase. Skipping training...")
