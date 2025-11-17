@@ -370,8 +370,8 @@ class PPO:
             # Check stop conditions
             if self._stopTraining_maxAvgPoint(self.avgReward) or self._stopTraining_maxEpisodes(episodeNumber): 
                 # Change the conf.json and  training_details.json files
-                with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
                     # training_details.json file
+                with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
                     cond1 = self._stopTraining_maxAvgPoint(self.avgReward)
                     cond2 = self._stopTraining_maxEpisodes(episodeNumber)
                     stopReason = "maxAvgPoint" if cond1 and not cond2 else "maxEpisodes" if cond2 and not cond1 else  "maxAvgPoint and maxEpisodes" if cond1 and cond2 else None
@@ -379,9 +379,11 @@ class PPO:
                     json.dump(episodeData, f, indent=2)
 
                 # conf.json file
-                with open('conf.json', 'w') as f:
+                with open('conf.json', 'r+') as f:
                     _conf = json.load(f)
                     _conf["finished"] = True
+                    f.seek(0)  # Move pointer back to start
+                    f.truncate()  # Clear the file
                     json.dump(_conf, f, indent=4)
 
                 # Stop training
