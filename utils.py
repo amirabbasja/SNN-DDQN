@@ -747,6 +747,7 @@ def modelParamParser():
     parser.add_argument("--local_backup", "-l", action = "store_true", help = "Save the training networks' data locally")
     parser.add_argument("--debug", "-db", action = "store_true", help = "Keep track of the training progress")
     parser.add_argument("--train_finish_timestamp", "-tfts", type = float, default = 0., help = "The timestamp at which entire training (all runs) is finished")
+    parser.add_argument("--stop_condition", "-stopcond", type = str, default = "", help = "The training stop conditions")
     parser.add_argument("--finished", "-f", action = "store_true", help = "Is the training finished")
     
     return parser

@@ -15,6 +15,8 @@ args, unknown = parser.parse_known_args()
 args.env_options = json.loads(args.env_options)
 args.network_options = json.loads(args.network_options)
 args.algorithm_options = json.loads(args.algorithm_options)
+args.stop_condition = json.loads(args.stop_condition)
+args.extra_info = json.loads(args.extra_info) if args.extra_info != "" else ""
 
 uploadInfo = None
 if args.upload_to_cloud:
