@@ -63,6 +63,8 @@ To run the code, two important files are required which are not added to repo an
     * Run the file stand alone using `python run.py`. This results in applying the latest version of the code to the repository and then running *train.py* with the arguments provided in *.env* and *conf.json* files.  
     Running the file with a `--forcenewrun` flag will force the training to start from scratch and not contunue the latest run (If "continue_run" is set to true in *conf.json* file), regardless of *conf.json* file.
     * Run the file with a `--forceconfig` flag which with doing so, the app will disregard all of the configs present  in the *conf.json* file. With passing the `--forceconfig` flag, the app expects you to pass the entire configuration as a JSON string with `--config <JSON string>` argument.
+    * Run with `--skipupdate` flag to skip updating the code base and directly start training.
+    * Run with `--onlyupdate` flag to only update the code base and not start training.
 
 4. *train.py:* Performs the training process. Shouldn't be ran stand-alone.
 
