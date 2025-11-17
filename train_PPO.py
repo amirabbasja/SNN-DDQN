@@ -34,6 +34,11 @@ if args.upload_to_cloud:
         "replace": True
     }
 
+# Impose finished condition
+if args.finished:
+    print("Training is already finished. Exiting...")
+    exit()
+
 continueLastRun = args.continue_run
 _, runSavePath = get_next_run_number_and_create_folder(continueLastRun, args)
 

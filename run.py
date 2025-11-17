@@ -202,66 +202,6 @@ def sendTelegramMessage(bot_token, chat_id, message):
     response = requests.post(url, data=payload)
     return response.json()
 
-def getMatchingRunConfigs(runs_dir="runs_data", current_algorithm=None):
-    """
-    Finds all run configurations in the specified directory that match the current algorithm.
-
-    Args:
-        runs_dir (str): The directory to search for run configurations. Defaults to "runs_data".
-        current_algorithm (str, optional): The current algorithm to match. If None, attempts to read from "conf.json".
-
-    Returns:
-        list: A list of matching run configurations.
-    """
-    if current_algorithm is None:
-        root_conf_path = os.path.join(".", "conf.json")
-        if os.path.isfile(root_conf_path):
-            try:
-                with open(root_conf_path, "r", encoding="utf-8") as f:
-                    root_conf = json.load(f)
-                current_algorithm = root_conf.get("algorithm")
-            except Exception:
-                current_algorithm = None
-
-    if not current_algorithm:
-        return []
-
-    if not os.path.isdir(runs_dir):
-        return []
-
-    matching_configs = []
-    try:
-        for item in os.listdir(runs_dir):
-            run_path = os.path.join(runs_dir, item)
-            if not os.path.isdir(run_path):
-                continue
-
-            conf_path = os.path.join(run_path, "conf.json")
-            if not os.path.isfile(conf_path):
-                candidate = None
-                try:
-                    for child in os.listdir(run_path):
-                        child_conf = os.path.join(run_path, child, "conf.json")
-                        if os.path.isfile(child_conf):
-                            candidate = child_conf
-                            break
-                except Exception:
-                    pass
-                conf_path = candidate if candidate else None
-
-            if conf_path and os.path.isfile(conf_path):
-                try:
-                    with open(conf_path, "r", encoding="utf-8") as f:
-                        conf = json.load(f)
-                    if conf.get("algorithm") == current_algorithm:
-                        matching_configs.append(conf)
-                except Exception:
-                    continue
-    except Exception:
-        return matching_configs
-
-    return matching_configs
-
 # # Install packages
 # subprocess.check_call([sys.executable, "-m", "pip", "install", "swig"])
 # subprocess.check_call([sys.executable, "-m", "pip", "install", 'gymnasium[box2d]'])
@@ -331,9 +271,25 @@ maxRunTime = data["max_run_time"]
 if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
     sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training started for session {os.getenv('session_name')}")
 
+# Replace the conf.json contents with the new parameters
+if "--forceconfig" in sys.argv:
+    with open("conf.json", 'w') as f:
+        json.dump(data, f, indent=4)
+
 argsDict = {} # Save the runs argument
 trainingEpoch = 1
 while time.time() < endTime:
+    # Check for "finished" value in the config file
+    with open('conf.json', 'r') as file:
+        _updatedJson = json.load(file)
+        if not "finished" in _updatedJson:
+            print("Finished key not found in conf.json. Please check the file format.")
+            break
+
+        if _updatedJson["finished"]:
+            print("The config has been marked as finished. Exiting...")
+            break
+
     # Run parameters
     if data["algorithm"] == "DDQN":
         argsDict = {
@@ -353,6 +309,8 @@ while time.time() < endTime:
             "local_backup": data["local_backup"],
             "debug": data["debug"],
             "train_finish_timestamp": endTime,
+            "stop_condition": data["stop_condition"],
+            "finished": data["finished"]
         }
     elif  data["algorithm"] == "PPO":
         argsDict = {
@@ -374,6 +332,8 @@ while time.time() < endTime:
             "local_backup": data["local_backup"],
             "debug": data["debug"],
             "train_finish_timestamp": endTime,
+            "stop_condition": data["stop_condition"],
+            "finished": data["finished"]
         }
     else:
         raise ValueError(f"Unknown algorithm specified in conf.json: {data['algorithm']}")
@@ -415,6 +375,14 @@ while time.time() < endTime:
         
         if name == "network_critic_options":
             scriptArgs.extend([f"--network_critic_options", json.dumps(value)])
+            continue
+        
+        if name == "stop_condition":
+            scriptArgs.extend([f"--stop_condition", json.dumps(value)])
+            continue
+
+        if name == "finished":
+            scriptArgs.extend([f"--finished"]) if value else None
             continue
         
         scriptArgs.extend([f"--{name}", str(value)])

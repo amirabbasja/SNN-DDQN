@@ -33,5 +33,10 @@
     "train_max_time": 12600,
     "upload_to_cloud": false,
     "local_backup": true,
-    "debug": true
+    "debug": true,
+    "stop_condition": {
+        "maxEpisodes": 99999999999,
+        "maxAvgPoint": 99999999999
+    },
+    "finished": false
 }

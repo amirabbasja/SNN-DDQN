@@ -64,6 +64,7 @@ class PPO:
         assert "action_space" in args, "Action space is required in args (Should be a list of available actions)"
         assert "env" in args, "The environment object is required in args"
         assert "stateSize" in args, "The size of the state space is required in args"
+        assert "stop_condition" in args, "Stop conditions should be emphasized in stop_condition"
 
         # args - Specific parameters for PPO
         assert "timeStepsPerBatch" in args["algorithm_options"], "Number of time steps per batch is required in args"
@@ -98,6 +99,9 @@ class PPO:
 
         if args["algorithm_options"]["advantage_method"] == "gae":
             assert "gae_lambda" in args["algorithm_options"], "GAE lambda parameter is required in args for GAE advantage method"
+        
+        if not("maxEpisodes" in args["stop_condition"] or "maxAvgPoint" in args["stop_condition"]):
+            raise ValueError("Stop conditions should be emphasized in stop_condition, either maxEpisodes or maxAvgPoint should be emphasized")
 
         # Set pytorch parameters: The device (CPU or GPU) and data types
         self.device = torch.device("cpu") # Force CPU for now. TODO: Add support for GPU => torch.device("cuda") if torch.cuda.is_available() else torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -120,6 +124,7 @@ class PPO:
         self.nActions = len(self.actionSpace)
         self.env = args["env"]
         self.stateSize = args["stateSize"]
+        self.stop_condition = args["stop_condition"]
 
         # PPO parameters
         self.learningRate = args["algorithm_options"]["learning_rate"]
@@ -235,6 +240,7 @@ class PPO:
         batchRewards = []
         batchRewardsToGo = []
         batchEpisodeLengths = []
+        _stopTraining = False
         
         t = 0
         while t < self.timeStepsPerBatch:
@@ -360,6 +366,28 @@ class PPO:
             batchEpisodeLengths.append(tEpisode + 1)
             batchRewards.append(episodeRewards)
             cumEpisodeRewards.append(np.array(episodeRewards).sum())
+                        
+            # Check stop conditions
+            if self._stopTraining_maxAvgPoint(self.avgReward) or self._stopTraining_maxEpisodes(episodeNumber): 
+                # Change the conf.json and  training_details.json files
+                with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
+                    # training_details.json file
+                    cond1 = self._stopTraining_maxAvgPoint(self.avgReward)
+                    cond2 = self._stopTraining_maxEpisodes(episodeNumber)
+                    stopReason = "maxAvgPoint" if cond1 and not cond2 else "maxEpisodes" if cond2 and not cond1 else  "maxAvgPoint and maxEpisodes" if cond1 and cond2 else None
+                    episodeData.update({"stopReason": stopReason})
+                    json.dump(episodeData, f, indent=2)
+
+                # conf.json file
+                with open('conf.json', 'w') as f:
+                    _conf = json.load(f)
+                    _conf["finished"] = True
+                    json.dump(_conf, f, indent=4)
+
+                # Stop training
+                _stopTraining = True
+                break
+
         
         batchObs = torch.tensor(batchObs, dtype=torch.float32)
         # Use torch.long for Categorical distribution actions | torch.float32 for MultivariateNormal distribution actions
@@ -370,7 +398,7 @@ class PPO:
         batchActions = torch.from_numpy(actions_array.astype(np.int64))
         batchLogProbs = torch.tensor(batchLogProbs, dtype=torch.float32)
         batchRewardsToGo = self.computeRewardsToGo(batchRewards)
-        return batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards, cumEpisodeRewards
+        return batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards, cumEpisodeRewards, _stopTraining
     
     def computeRewardsToGo(self, batchRewards):
         """
@@ -397,6 +425,7 @@ class PPO:
         criticLossMem = []
         actorLossMem = []
         self.lstHistory = [] if self.lstHistory == None else self.lstHistory
+        _stopTraining = False
 
         t = self.overallTimestep
         episode = self.startEpisode
@@ -407,7 +436,7 @@ class PPO:
         while episode < self.totalEpisodes:
             # Collect data
             episodeStartTime = time.time()
-            batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards, cumEpisodeRewards = self.rollout(episode)
+            batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards, cumEpisodeRewards, _stopTraining = self.rollout(episode)
             episode += len(batchEpisodeLengths)
             rewardsMem.extend(cumEpisodeRewards)
             
@@ -477,8 +506,9 @@ class PPO:
                 avgCriticLoss = np.array(criticLossMem[-self.avgWindow:-1]).mean(), 
                 avgReward = self.avgReward
             )
-                
+            
             if _finishTime < time.time(): break
+            if _stopTraining: break
 
         return rewardsMem, actorLossMem, criticLossMem
 
@@ -671,3 +701,17 @@ class PPO:
         os.makedirs(os.path.dirname(savePath), exist_ok=True)
         with open(savePath, "wb") as f:
             pickle.dump(self.lstActions, f)
+    
+    def _stopTraining_maxEpisodes(self, episode):
+        """
+        Returns True if maxEpisodes is reached. The 
+        """
+        if self.stop_condition["maxEpisodes"] <= episode: return True
+        else: return False
+
+    def _stopTraining_maxAvgPoint(self, epPointAvg):
+        """
+        Returns True if maxAvgPoint is reached
+        """
+        if self.stop_condition["maxAvgPoint"] <= epPointAvg: return True
+        else: return False

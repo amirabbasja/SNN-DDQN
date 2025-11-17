@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import json
 import zipfile
 
 
@@ -87,6 +88,67 @@ def get_telegram_credentials(env_path):
     return chat_id, bot_token
 
 
+def getMatchingRunConfigs(runs_dir="runs_data", current_algorithm=None):
+    """
+    Finds all run configurations in the specified directory that match the current algorithm.
+
+    Args:
+        runs_dir (str): The directory to search for run configurations. Defaults to "runs_data".
+        current_algorithm (str, optional): The current algorithm to match. If None, attempts to read from "conf.json".
+
+    Returns:
+        list: A list of matching run configurations.
+    """
+    if current_algorithm is None:
+        root_conf_path = os.path.join(".", "conf.json")
+        if os.path.isfile(root_conf_path):
+            try:
+                with open(root_conf_path, "r", encoding="utf-8") as f:
+                    root_conf = json.load(f)
+                current_algorithm = root_conf.get("algorithm")
+            except Exception:
+                current_algorithm = None
+
+    if not current_algorithm:
+        return []
+
+    if not os.path.isdir(runs_dir):
+        return []
+
+    matching_configs = []
+    try:
+        for item in os.listdir(runs_dir):
+            run_path = os.path.join(runs_dir, item)
+            if not os.path.isdir(run_path):
+                continue
+
+            conf_path = os.path.join(run_path, "conf.json")
+            if not os.path.isfile(conf_path):
+                candidate = None
+                try:
+                    for child in os.listdir(run_path):
+                        child_conf = os.path.join(run_path, child, "conf.json")
+                        if os.path.isfile(child_conf):
+                            candidate = child_conf
+                            break
+                except Exception:
+                    pass
+                conf_path = candidate if candidate else None
+
+            if conf_path and os.path.isfile(conf_path):
+                try:
+                    with open(conf_path, "r", encoding="utf-8") as f:
+                        conf = json.load(f)
+                    if conf.get("algorithm") == current_algorithm:
+                        matching_configs.append(conf)
+                except Exception:
+                    continue
+    except Exception:
+        return matching_configs
+
+    return matching_configs
+
+
 def main():
     project_root = os.path.dirname(os.path.abspath(__file__))
     env_path = os.path.join(project_root, ".env")
@@ -124,7 +186,61 @@ def upload_to_telegram(file_path, chat_id, bot_token):
 
 if __name__ == "__main__":
     try:
-        main()
+        if "--check_duplicate_config" in sys.argv: 
+            try:
+                conf = json.loads(sys.argv[sys.argv.index("--check_duplicate_config") + 1])
+                # Remove the keys that may change and are unnecessary for comparing
+                conf.pop("tuning", None)
+                conf.pop("tune", None)
+                conf.pop("debug", None)
+                conf.pop("local_backup", None)
+                conf.pop("upload_to_cloud", None)
+                conf.pop("train_max_time", None)
+                conf.pop("stop_learning_at_win_percent", None)
+                conf.pop("max_run_time", None)
+                conf.pop("extra_info", None)
+                conf.pop("agents", None)
+                conf.pop("continue_run", None)
+                conf.pop("finished", None)
+
+                # Get all configs that have the same algorithm (located in runs_data directory)
+                similarConfigs = getMatchingRunConfigs(runs_dir="runs_data", current_algorithm=conf["algorithm"])
+
+                found_duplicate = False
+                for _conf in similarConfigs:
+                    # See if training has finished
+                    _finished = str(_conf.get("finished", False))
+
+                    # Remove the keys that may change and are unnecessary for comparing
+                    _conf.pop("tuning", None)
+                    _conf.pop("tune", None)
+                    _conf.pop("debug", None)
+                    _conf.pop("local_backup", None)
+                    _conf.pop("upload_to_cloud", None)
+                    _conf.pop("train_max_time", None)
+                    _conf.pop("stop_learning_at_win_percent", None)
+                    _conf.pop("max_run_time", None)
+                    _conf.pop("extra_info", None)
+                    _conf.pop("agents", None)
+                    _conf.pop("continue_run", None)
+                    _conf.pop("finished", None)
+
+                    if conf == _conf and _finished == True:
+                        print("true: finished duplicate found")
+                        found_duplicate = True
+                        break
+                    elif conf == _conf and _finished == False:
+                        print("false: unfinished duplicate found")
+                        found_duplicate = True
+                        break
+
+                if not found_duplicate:
+                    print("false: no duplicates found")
+
+            except Exception as e:
+                raise Exception("Invalid JSON format in --check_duplicate_config parameter. Configuration should be passed exactly after --check_duplicate_config flag.")
+        else:
+            main()
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

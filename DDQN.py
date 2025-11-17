@@ -68,6 +68,7 @@ class DDQN():
         assert "action_space" in args, "Action space is required in args (Should be a list of available actions)"
         assert "env" in args, "The environment object is required in args"
         assert "stateSize" in args, "The size of the state space is required in args"
+        assert "stop_condition" in args, "Stop conditions should be emphasized in stop_condition"
 
         # args - Specific parameters for DDQN
         assert "algorithm" in args, "Algorithm is required in args"
@@ -103,6 +104,9 @@ class DDQN():
         
         if args["algorithm_options"] == None or args["algorithm_options"] == {}:
             raise ValueError("algorithm_options cannot be None or empty for DDQN")
+        
+        if not("maxEpisodes" in args["stop_condition"] or "maxAvgPoint" in args["stop_condition"]):
+            raise ValueError("Stop conditions should be emphasized in stop_condition, either maxEpisodes or maxAvgPoint should be emphasized")
 
         # Set pytorch parameters: The device (CPU or GPU) and data types
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -125,6 +129,7 @@ class DDQN():
         self.nActions = len(self.actionSpace)
         self.env = args["env"]
         self.stateSize = args["stateSize"]
+        self.stop_condition = args["stop_condition"]
 
         # DDQN hyperparameters
         _options = args["algorithm_options"]
@@ -350,7 +355,21 @@ class DDQN():
             print(f"Memory details: {self.mem.len}")
         
         return lastPrintTime
-    
+
+    def _stopTraining_maxEpisodes(self, episode):
+        """
+        Returns True if maxEpisodes is reached. The 
+        """
+        if self.stop_condition["maxEpisodes"] <= episode: return True
+        else: return False
+
+    def _stopTraining_maxAvgPoint(self, epPointAvg):
+        """
+        Returns True if maxAvgPoint is reached
+        """
+        if self.stop_condition["maxAvgPoint"] <= epPointAvg: return True
+        else: return False
+
     def train(self):
         """
         Starts the training process
@@ -529,3 +548,22 @@ class DDQN():
                     plotGradientNorms(histDf, os.path.join(self.runSavePath, f"gradient_norms.png"))
                 except Exception as e:
                     print("Could not plot the gradient norms. Error:", e)
+            
+            # Check stop conditions
+            if self._stopTraining_maxAvgPoint(self.avgReward) or self._stopTraining_maxEpisodes(episode): 
+                # Change the conf.json and  training_details.json files
+                with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
+                    # training_details.json file
+                    cond1 = self._stopTraining_maxAvgPoint(self.avgReward)
+                    cond2 = self._stopTraining_maxEpisodes(episode)
+                    stopReason = "maxAvgPoint" if cond1 and not cond2 else "maxEpisodes" if cond2 and not cond1 else  "maxAvgPoint and maxEpisodes" if cond1 and cond2 else None
+                    episodeData.update({"stopReason": stopReason})
+                    json.dump(episodeData, f, indent=2)
+
+                # conf.json file
+                with open('conf.json', 'w') as f:
+                    _conf = json.load(f)
+                    _conf["finished"] = True
+                    json.dump(_conf, f, indent=4)
+
+                return True
