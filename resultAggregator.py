@@ -239,8 +239,10 @@ if __name__ == "__main__":
 
             except Exception as e:
                 raise Exception("Invalid JSON format in --check_duplicate_config parameter. Configuration should be passed exactly after --check_duplicate_config flag.")
-        else:
+        elif "--upload_to_telegram" in sys.argv:
             main()
+        else:
+            print("No valid flag found. Use --check_duplicate_config or --upload_to_telegram.")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
