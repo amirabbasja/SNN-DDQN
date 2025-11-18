@@ -209,7 +209,7 @@ if __name__ == "__main__":
                 found_duplicate = False
                 for _conf in similarConfigs:
                     # See if training has finished
-                    _finished = True if str(_conf.get("finished", None)) == "True" else False if str(_conf.get("finished", None)) == "True" else None
+                    _finished = True if str(_conf.get("finished", None)) == "True" else False if str(_conf.get("finished", None)) == "False" else None
 
                     # Remove the keys that may change and are unnecessary for comparing
                     _conf.pop("tuning", None)
