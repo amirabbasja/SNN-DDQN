@@ -379,6 +379,14 @@ class PPO:
                     json.dump(episodeData, f, indent=2)
 
                 # conf.json file
+                with open(os.path.join(self.runSavePath, f"conf.json"), 'r+') as f:
+                    _conf = json.load(f)
+                    _conf["finished"] = True
+                    f.seek(0)  # Move pointer back to start
+                    f.truncate()  # Clear the file
+                    json.dump(_conf, f, indent=4)
+
+                # conf.json file
                 with open('conf.json', 'r+') as f:
                     _conf = json.load(f)
                     _conf["finished"] = True
