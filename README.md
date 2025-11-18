@@ -69,3 +69,7 @@ To run the code, two important files are required which are not added to repo an
 4. *train.py:* Performs the training process. Shouldn't be ran stand-alone.
 
 5. *utils.py:* Houses the utility functions necessary to keep the entire repo working.
+
+6. *resultAggregator.py:* Aggregates all training runs' results and processes them. 
+    * Run with `--check_duplicate_config` flag followed by `--config <JSON string>` argument to check for duplicate configurations in all the previous runs. This helps us avoid running the same configuration twice.
+    * Run with `--upload_to_telegram` flag to upload all the results ina zip file to a telegram bot and send it to a specified chatID (*Bot's key and the chatID should be denoted in .env file*)
