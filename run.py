@@ -309,7 +309,7 @@ while time.time() < endTime:
             "network_options": data["network_options"],
             "continue_run": data["continue_run"], # If --forcenewrun was passed, override config
             "agents": data["agents"],
-            "extra_info": "",
+            "extra_info": data["extra_info"],
             "max_run_time": data["max_run_time"], # In seconds
             "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
             "upload_to_cloud": data["upload_to_cloud"],
@@ -332,7 +332,7 @@ while time.time() < endTime:
             "network_critic_options": data["network_critic_options"],
             "continue_run": data["continue_run"], # If --forcenewrun was passed, override config
             "agents": data["agents"],
-            "extra_info": "",
+            "extra_info": data["extra_info"],
             "max_run_time": data["max_run_time"], # In seconds
             "stop_learning_at_win_percent": data["stop_learning_at_win_percent"],
             "upload_to_cloud": data["upload_to_cloud"],
