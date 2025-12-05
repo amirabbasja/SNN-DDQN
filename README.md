@@ -1,7 +1,7 @@
 # General introduction to repo
-
-This repo is for training an RL agent using SNNs. The training is done using the [OpenAI Gym](https://gym.openai.com/) environment.  
-We have deployed a DDQN architecture for training the agent. Both online and critique networks are SNNs.  
+ 
+This repo is for training an RL agent using SNNs. The training is done using the [OpenAI Gym](https://gym.openai.com/) environments.  
+We have deployed various architectures for training the agent.
   
 To run the code, two important files are required which are not added to repo and should be kep sectret. These files should contain following parameters:  
 1. *.env*  
@@ -12,30 +12,10 @@ To run the code, two important files are required which are not added to repo an
     repo_ID = <huggingFace repo ID>
     code_base_link = <github repo ID to update the files to the latest version before training>
     python_venv_path = <path to the venv exe file>
+    telegram_bot_token = <Token of the telegram bot which the user will receive messages from>
+    telegram_chat_id = <Telegram chat id to send update messages to>
     ```
-2. *conf.json*
-    ```
-    {
-        "name": "SNN_DDQN",
-        "continue_run": true,
-        "agents": 1,
-        "hidden_layers": [64, 64],
-        "learning_rate": 0.0004,
-        "decay": 0.998,
-        "batch": 100,
-        "gamma": 0.995,
-        "extra_info": "",
-        "max_run_time": 12600, 
-        "stop_learning_at_win_percent": 80,
-        "train_max_time": 12600,
-        "upload_to_cloud": false,
-        "local_backup": true,
-        "architecture": "snn",
-        "snn_tSteps": 25,
-        "snn_beta": 0.95,
-        "debug": true
-    }
-    ```
+2. *conf.json*: Different algorithms have different config file architectures. Please refer to `confExamples` folder for examples.
 3. *studios.json*
     ```
     {
@@ -73,3 +53,14 @@ To run the code, two important files are required which are not added to repo an
 6. *resultAggregator.py:* Aggregates all training runs' results and processes them. 
     * Run with `--check_duplicate_config` flag followed by `--config <JSON string>` argument to check for duplicate configurations in all the previous runs. This helps us avoid running the same configuration twice.
     * Run with `--upload_to_telegram` flag to upload all the results ina zip file to a telegram bot and send it to a specified chatID (*Bot's key and the chatID should be denoted in .env file*)
+
+---
+  
+# Supported algorithms
+
+1. *DDQN*:  
+    The algorithm uses two networks, *Q_Network* and *Target Q-Network* for getting the actions for each timestep. Initially, both networks should have the same weights. Its important to know that both networks should have identical structures, therefore they should both be ANN or SNN networks.
+2. *PPO*:
+    The algorithm uses two networks, *Actor Network* and *Critic Network* for getting the actions for each timestep. It is not necessary for both networks to be identical, therefore a mixture of ANN and SNN networks can be used in this algorithm.
+
+

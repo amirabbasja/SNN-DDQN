@@ -1,8 +1,7 @@
-import os
-import re
-import sys
-import json
-import zipfile
+import os, torch, re, sys, json, zipfile
+from pprint import pprint
+import pandas as pd
+from dotenv import load_dotenv
 
 
 def parse_env_file(env_path):
@@ -47,12 +46,71 @@ def list_run_dirs(runs_root):
 
 def collect_target_files(run_dir):
     targets = []
+    runsDataDf = []
     for root, _, files in os.walk(run_dir):
         for fn in files:
             ext = os.path.splitext(fn)[1].lower()
             if ext in (".png", ".json"):
                 targets.append(os.path.join(root, fn))
-    return targets
+
+            # Check for .pth files as well
+            if ext in [".pth"]:
+                try:
+                    trainingData = torch.load(os.path.join(root, fn), weights_only = False)
+                    saveDf = pd.DataFrame(trainingData.get("train_history"))
+                    dup_counts = saveDf['seed'].value_counts() - 1
+                    dup_counts = dup_counts[dup_counts > 0]
+
+                    _duplicateSeedCount = dup_counts.sum()
+                    _episodeCount = saveDf['episode'].max()
+                    _maxTimesteps = saveDf['timesteps'].max()
+                    _minTimesteps = saveDf['timesteps'].min()
+                    _avgTimesteps = saveDf['timesteps'].mean()
+                    _TotalDuration = saveDf['duration'].sum()
+                    _maxEpisodeDuration = saveDf['duration'].max()
+                    _avgEpisodeDuration = saveDf['duration'].mean()
+                    _minEpisodeDuration = saveDf['duration'].min()
+                    _totalTimesteps = saveDf['timesteps'].sum()
+                    _maxPoints = saveDf['points'].max()
+                    
+                    # Add data to the dataframe. Do not add the backup folder
+                    if "Backup" not in root:
+                        _dict = {
+                            "session": os.getenv("session_name"),
+                            "run": root.split(os.sep)[-1], # Run's number
+                            "episodes": _episodeCount,
+                            "numDuplicateInitialConditions": _duplicateSeedCount,
+                            "trainingDuration": _TotalDuration,
+                            "maxEpisodeDuration": _maxEpisodeDuration,
+                            "avgEpisodeDuration": _avgEpisodeDuration,
+                            "minEpisodeDuration": _minEpisodeDuration,
+                            "totalTrainingTimesteps": _totalTimesteps,
+                            "maxEpisodeTimesteps": _maxTimesteps,
+                            "avgEpisodeTimesteps": _avgTimesteps,
+                            "minEpisodeTimesteps": _minTimesteps,
+                            "points": _maxPoints,
+                        }
+                        runsDataDf.append(_dict)
+
+                except Exception as e:
+                    # Add data to the dataframe
+                    runsDataDf.append({
+                        "session": os.getenv("session_name"),
+                        "run": root.split(os.sep)[-1], # Run's number
+                        "episodes": -1,
+                        "numDuplicateInitialConditions": -1,
+                        "trainingDuration": -1,
+                        "maxEpisodeDuration": -1,
+                        "avgEpisodeDuration": -1,
+                        "minEpisodeDuration": -1,
+                        "totalTrainingTimesteps": -1,
+                        "maxEpisodeTimesteps": -1,
+                        "avgEpisodeTimesteps": -1,
+                        "minEpisodeTimesteps": -1,
+                        "points": -1,
+                    })
+
+    return targets, runsDataDf
 
 
 def derive_run_folder_name(run_dir_name):
@@ -64,17 +122,32 @@ def create_zip(session_name, runs_root, output_zip):
     run_dirs = list_run_dirs(runs_root)
     included_files = 0
 
+    # Save the details of runs into an excel file
+    runsDataDf = []
+    for run_dir in run_dirs:
+        _, tmp = collect_target_files(run_dir)
+        runsDataDf = runsDataDf + tmp
+    pd.DataFrame(runsDataDf).to_excel(f"runs_data/{session_name}_trainingRunsData.xlsx", index=False)
+
     with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+
         for run_dir in run_dirs:
             run_dir_name = os.path.basename(run_dir)
             run_folder_in_zip = derive_run_folder_name(run_dir_name)
-            files = collect_target_files(run_dir)
+            files, _ = collect_target_files(run_dir)
 
             for fp in files:
                 rel = os.path.relpath(fp, start=run_dir)
                 arc = os.path.join(run_folder_in_zip, rel).replace("\\", "/")
                 zf.write(fp, arcname=arc)
                 included_files += 1
+
+        # Adding the excel file
+        if os.path.exists(f"runs_data/{session_name}_trainingRunsData.xlsx"):
+            zf.write(f"runs_data/{session_name}_trainingRunsData.xlsx", arcname=f"{session_name}_trainingRunsData.xlsx")
+            print(f"Added runs_data/{session_name}_trainingRunsData.xlsx as {session_name}_trainingRunsData.xlsx")
+        else:
+            print(f"Warning: runs_data/{session_name}_trainingRunsData.xlsx not found, skipping.")
 
     return len(run_dirs), included_files
 
@@ -185,6 +258,9 @@ def upload_to_telegram(file_path, chat_id, bot_token):
 
 
 if __name__ == "__main__":
+    # GEt environment variables
+    load_dotenv()
+
     try:
         if "--check_duplicate_config" in sys.argv: 
             try:
