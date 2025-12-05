@@ -247,7 +247,7 @@ class PPO:
             # Rewards per episode
             episodeRewards = []
             
-            randomSeed = random.randint(0, 1000)
+            randomSeed = random.randint(0, 1000000000)
             startTimestep = t
             startTimestamp = time.time()
             obs, info = self.env.reset(seed = randomSeed)
