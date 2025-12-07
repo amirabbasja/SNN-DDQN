@@ -1,7 +1,12 @@
-import os, torch, re, sys, json, zipfile
+import os, torch, re, sys, json, zipfile, json
 from pprint import pprint
 import pandas as pd
 from dotenv import load_dotenv
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment
+from openpyxl.styles import Font
+from pandas import ExcelWriter
+from openpyxl.utils import get_column_letter
 
 
 def parse_env_file(env_path):
@@ -55,60 +60,89 @@ def collect_target_files(run_dir):
 
             # Check for .pth files as well
             if ext in [".pth"]:
-                try:
-                    trainingData = torch.load(os.path.join(root, fn), weights_only = False)
-                    saveDf = pd.DataFrame(trainingData.get("train_history"))
-                    dup_counts = saveDf['seed'].value_counts() - 1
-                    dup_counts = dup_counts[dup_counts > 0]
+                if "Backups" not in root:
+                    try:
+                        with open(os.path.join(root, "conf.json"), 'r', encoding='utf-8') as file:
+                            config = json.load(file)
 
-                    _duplicateSeedCount = dup_counts.sum()
-                    _episodeCount = saveDf['episode'].max()
-                    _maxTimesteps = saveDf['timesteps'].max()
-                    _minTimesteps = saveDf['timesteps'].min()
-                    _avgTimesteps = saveDf['timesteps'].mean()
-                    _TotalDuration = saveDf['duration'].sum()
-                    _maxEpisodeDuration = saveDf['duration'].max()
-                    _avgEpisodeDuration = saveDf['duration'].mean()
-                    _minEpisodeDuration = saveDf['duration'].min()
-                    _totalTimesteps = saveDf['timesteps'].sum()
-                    _maxPoints = saveDf['points'].max()
-                    
-                    # Add data to the dataframe. Do not add the backup folder
-                    if "Backup" not in root:
-                        _dict = {
+                        trainingData = torch.load(os.path.join(root, fn), weights_only = False)
+                        saveDf = pd.DataFrame(trainingData.get("train_history"))
+                        dup_counts = saveDf['seed'].value_counts() - 1
+                        dup_counts = dup_counts[dup_counts > 0]
+
+                        _duplicateSeedCount = dup_counts.sum()
+                        _episodeCount = saveDf['episode'].max()
+                        _maxTimesteps = saveDf['timesteps'].max()
+                        _minTimesteps = saveDf['timesteps'].min()
+                        _avgTimesteps = saveDf['timesteps'].mean()
+                        _TotalDuration = saveDf['duration'].sum()
+                        _maxEpisodeDuration = saveDf['duration'].max()
+                        _avgEpisodeDuration = saveDf['duration'].mean()
+                        _minEpisodeDuration = saveDf['duration'].min()
+                        _totalTimesteps = saveDf['timesteps'].sum()
+                        _maxPoints = saveDf['points'].max()
+                        
+                        # Add data to the dataframe. Do not add the backup folder
+                        if "Backups" not in root:
+                            _dict = {
+                                "session": os.getenv("session_name"),
+                                "run": root.split(os.sep)[-1], # Run's number
+                                "episodes": _episodeCount,
+                                "numDuplicateInitialConditions": _duplicateSeedCount,
+                                "trainingDuration": _TotalDuration,
+                                "maxEpisodeDuration": _maxEpisodeDuration,
+                                "avgEpisodeDuration": _avgEpisodeDuration,
+                                "minEpisodeDuration": _minEpisodeDuration,
+                                "totalTrainingTimesteps": _totalTimesteps,
+                                "maxEpisodeTimesteps": _maxTimesteps,
+                                "avgEpisodeTimesteps": _avgTimesteps,
+                                "minEpisodeTimesteps": _minTimesteps,
+                                "maxPoint": _maxPoints,
+                                "algorithm": config["algorithm"],
+                                "environment": config["env"],
+                                "learning_rate": config["algorithm_options"]["learning_rate"],
+                                "maxNumTimeSteps": config["algorithm_options"]["maxNumTimeSteps"],
+                                
+                                # PPO algogrithm
+                                "gamma": config["algorithm_options"]["gamma"] if config["algorithm"] == "PPO" else "*",
+                                "clip": config["algorithm_options"]["clip"] if config["algorithm"] == "PPO" else "*",
+                                "nUpdatesPerIteration": config["algorithm_options"]["nUpdatesPerIteration"] if config["algorithm"] == "PPO" else "*",
+                                "timeStepsPerBatch": config["algorithm_options"]["timeStepsPerBatch"] if config["algorithm"] == "PPO" else "*",
+                                "entropyCoef": config["algorithm_options"]["entropyCoef"] if config["algorithm"] == "PPO" else "*",
+                                "advantage_method": config["algorithm_options"]["advantage_method"] if config["algorithm"] == "PPO" else "*",
+                                "gae_lambda": config["algorithm_options"]["gae_lambda"] if config["algorithm"] == "PPO" else "*",
+                                
+                                # DDQN algorithm
+                                "decay": config["algorithm_options"]["decay"] if config["algorithm"] == "DDQN" else "*",
+                                "batch": config["algorithm_options"]["batch"] if config["algorithm"] == "DDQN" else "*",
+                                "gamma": config["algorithm_options"]["gamma"] if config["algorithm"] == "DDQN" else "*",
+                                "memorySize": config["algorithm_options"]["memorySize"] if config["algorithm"] == "DDQN" else "*",
+                                "startEbsilon": config["algorithm_options"]["startEbsilon"] if config["algorithm"] == "DDQN" else "*",
+                                "endEbsilon": config["algorithm_options"]["endEbsilon"] if config["algorithm"] == "DDQN" else "*",
+                                "numUpdateTS": config["algorithm_options"]["numUpdateTS"] if config["algorithm"] == "DDQN" else "*",
+                            }
+                            runsDataDf.append(_dict)
+
+                    except Exception as e:
+                        print(e)
+
+                        # Add data to the dataframe
+                        runsDataDf.append({
                             "session": os.getenv("session_name"),
                             "run": root.split(os.sep)[-1], # Run's number
-                            "episodes": _episodeCount,
-                            "numDuplicateInitialConditions": _duplicateSeedCount,
-                            "trainingDuration": _TotalDuration,
-                            "maxEpisodeDuration": _maxEpisodeDuration,
-                            "avgEpisodeDuration": _avgEpisodeDuration,
-                            "minEpisodeDuration": _minEpisodeDuration,
-                            "totalTrainingTimesteps": _totalTimesteps,
-                            "maxEpisodeTimesteps": _maxTimesteps,
-                            "avgEpisodeTimesteps": _avgTimesteps,
-                            "minEpisodeTimesteps": _minTimesteps,
-                            "points": _maxPoints,
-                        }
-                        runsDataDf.append(_dict)
+                            "episodes": -1,
+                            "numDuplicateInitialConditions": -1,
+                            "trainingDuration": -1,
+                            "maxEpisodeDuration": -1,
+                            "avgEpisodeDuration": -1,
+                            "minEpisodeDuration": -1,
+                            "totalTrainingTimesteps": -1,
+                            "maxEpisodeTimesteps": -1,
+                            "avgEpisodeTimesteps": -1,
+                            "minEpisodeTimesteps": -1,
+                            "maxPoint": -1,
+                        })
 
-                except Exception as e:
-                    # Add data to the dataframe
-                    runsDataDf.append({
-                        "session": os.getenv("session_name"),
-                        "run": root.split(os.sep)[-1], # Run's number
-                        "episodes": -1,
-                        "numDuplicateInitialConditions": -1,
-                        "trainingDuration": -1,
-                        "maxEpisodeDuration": -1,
-                        "avgEpisodeDuration": -1,
-                        "minEpisodeDuration": -1,
-                        "totalTrainingTimesteps": -1,
-                        "maxEpisodeTimesteps": -1,
-                        "avgEpisodeTimesteps": -1,
-                        "minEpisodeTimesteps": -1,
-                        "points": -1,
-                    })
 
     return targets, runsDataDf
 
@@ -127,8 +161,56 @@ def create_zip(session_name, runs_root, output_zip):
     for run_dir in run_dirs:
         _, tmp = collect_target_files(run_dir)
         runsDataDf = runsDataDf + tmp
-    pd.DataFrame(runsDataDf).to_excel(f"runs_data/{session_name}_trainingRunsData.xlsx", index=False)
+    
+    # Save the dataframe to excel
+    with ExcelWriter(f"runs_data/{session_name}_trainingRunsData.xlsx", engine="openpyxl") as writer:
+        runsDataDf = pd.DataFrame(runsDataDf)
+        runsDataDf.to_excel(writer, index=False, sheet_name="Sheet1")
 
+        # Get the workbook and sheet
+        workbook = writer.book
+        sheet = workbook["Sheet1"]
+
+        # Find column indices of the two columns you want to group
+        cols = list(runsDataDf.columns)
+
+        # Make header for each algorithm
+        sheet.insert_rows(1)
+        for i in range(1,18):
+            sheet.cell(row=1, column = i).value = sheet.cell(row=2, column = i).value
+            sheet.merge_cells(start_row =  1, start_column = i, end_row = 2, end_column = i)
+        
+        # Merge cells for PPO and DDQN headers
+        # PPO starts at column 18 and ends  on 24
+        sheet.merge_cells(start_row =  1, start_column = 18, end_row = 1, end_column = 24)
+        sheet.cell(row=1, column = 18).value = "PPO"
+        
+        # DDQN starts at column 25 and ends on 30
+        sheet.merge_cells(start_row =  1, start_column = 25, end_row = 1, end_column = 30)
+        sheet.cell(row=1, column = 25).value = "DDQN"
+
+        # Style cells
+        for row in sheet.iter_rows():
+            for cell in row:
+                cell.font = Font(name="Calibri", bold=False)
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # Set cell widths
+        for col in sheet.columns:
+            max_length = 0
+            col_letter = get_column_letter(col[0].column)
+
+            for cell in col:
+                try:
+                    cell_len = len(str(cell.value))
+                    if cell_len > max_length:
+                        max_length = cell_len
+                except:
+                    pass
+
+            # Add small extra space for padding
+            sheet.column_dimensions[col_letter].width = max_length + .2
+    
     with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
 
         for run_dir in run_dirs:
@@ -239,7 +321,6 @@ def main():
     print(f"Created zip: {output_zip}")
     print(f"Runs included: {num_runs}")
     print(f"Files included: {num_files}")
-
 
 def upload_to_telegram(file_path, chat_id, bot_token):
     try:
