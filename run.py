@@ -208,6 +208,7 @@ def sendTelegramMessage(bot_token, chat_id, message):
 # subprocess.check_call([sys.executable, "-m", "pip", "install", "snntorch"])
 # subprocess.check_call([sys.executable, "-m", "pip", "install", "imageio"])
 # subprocess.check_call([sys.executable, "-m", "pip", "install", "huggingface_hub"])
+# subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl "])
 
 # IF facing box2d not found errors, despite installing it, try following two lines:
 # conda install -c conda-forge swig box2d-py
