@@ -240,12 +240,12 @@ def collect_target_files(run_dir):
                             runsDataDf.append(_dict)
 
                     except Exception as e:
-                        from pprint import pprint
-                        print("aaaaaa", e)
-                        print("file:", root)
-                        pprint(config)
-                        traceback.print_exc()   
-                        exit()
+                        # from pprint import pprint
+                        # print("aaaaaa", e)
+                        # print("file:", root)
+                        # pprint(config)
+                        # traceback.print_exc()   
+                        # exit()
 
                         # Add data to the dataframe
                         runsDataDf.append({
@@ -298,15 +298,6 @@ def create_zip(session_name, runs_root, output_zip):
         ppoEndColNum = headerMap.get("gae_lambda")
         ddqnStartColNum = headerMap.get("decay")
         ddqnEndColNum = headerMap.get("numUpdateTS")
-        
-        for k in range(1,3):
-            x1 = sheet.max_column + 1
-            sheet.insert_cols(x1)
-            sheet.cell(row=1, column = x1).value = f"Network_{k}_type"
-            sheet.insert_cols(x1 + 1)
-            sheet.cell(row=1, column = x1 + 1).value = f"Network_{k}_details"
-            sheet.insert_cols(x1 + 2)
-            sheet.cell(row=1, column = x1 + 2).value = f"Network_{k}_layers"
 
         # Make header for each algorithm
         sheet.insert_rows(1)
@@ -656,7 +647,7 @@ if __name__ == "__main__":
                     
 
         else:
-            print("No valid flag found. Use --check_duplicate_config or --upload_to_telegram.")
+            print("No valid flag found. Acceptable flags are --check_duplicate_config , --upload_to_telegram and --analyze_results")
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
