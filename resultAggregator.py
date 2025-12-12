@@ -84,6 +84,114 @@ def collect_target_files(run_dir):
                         
                         # Add data to the dataframe. Do not add the backup folder
                         if "Backups" not in root:
+                            # Adapt for legacy training runs. TODO: Irrelevant in publication of main repo
+                            if not ("algorithm" in config):
+                                if ("decay" in config) and ("gamma" in config) and ("batch" in config):
+                                    config["algorithm"] = "DDQN"
+
+                                    if not ("algorithm_options" in config):
+                                        config["algorithm_options"] = {
+                                            "decay": config["decay"] if "decay" in config else -1,
+                                            "batch": config["batch"] if "batch" in config else -1,
+                                            "gamma": config["gamma"] if "gamma" in config else -1,
+                                            "memorySize": config["memorySize"] if "memorySize" in config else -1,
+                                            "startEbsilon": config["startEbsilon"] if "startEbsilon" in config else -1,
+                                            "endEbsilon": config["endEbsilon"] if "endEbsilon" in config else -1,
+                                            "numUpdateTS": config["numUpdateTS"] if "numUpdateTS" in config else -1,
+                                        }
+                                
+                                if ("clip" in config) and ("nUpdatesPerIteration" in config) :
+                                    config["algorithm"] = "DDQN"
+
+                                    if not ("algorithm_options" in config):
+                                        config["algorithm_options"] = {
+                                            "gamma": config["gamma"] if "gamma" in config else -1,
+                                            "clip": config["clip"] if "clip" in config else -1,
+                                            "nUpdatesPerIteration": config["nUpdatesPerIteration"] if "nUpdatesPerIteration" in config else -1,
+                                            "timeStepsPerBatch": config["timeStepsPerBatch"] if "timeStepsPerBatch" in config else -1,
+                                            "entropyCoef": config["entropyCoef"] if "entropyCoef" in config else -1,
+                                            "advantage_method": config["advantage_method"] if "advantage_method" in config else -1,
+                                            "gae_lambda": config["gae_lambda"] if "gae_lambda" in config else -1,
+                                            "maxNumTimeSteps": config["maxNumTimeSteps"] if "maxNumTimeSteps" in config else -1,
+                                        }
+                                
+                            if not("env" in config):
+                                config["env"] = "LunarLander-v3"
+
+                            if ("algorithm_options" in config) and  not ("learning_rate" in config["algorithm_options"]):
+                                if "learning_rate" in config: 
+                                    config["algorithm_options"]["learning_rate"] = config["learning_rate"]
+                                else:
+                                    raise Exception("ERR!")
+
+                            if ("architecture" in config) and (config["architecture"] == "snn"):
+                                
+                                if config["architecture"] == "snn":
+                                    if config["algorithm"] == "PPO":
+                                        config["network_actor"] = config["architecture"]
+                                        config["network_actor_options"] = {
+                                            "hidden_layers": config["hidden_layers"],
+                                            "snn_tSteps": config["snn_tSteps"],
+                                            "snn_beta": config["snn_beta"]
+                                        }
+
+                                        config["network_critic"] = config["architecture"]
+                                        config["network_critic_options"] = {
+                                            "hidden_layers": config["hidden_layers"],
+                                            "snn_tSteps": config["snn_tSteps"],
+                                            "snn_beta": config["snn_beta"]
+                                        }
+                                    if config["algorithm"] == "DDQN":
+                                        config["network"] = config["architecture"]
+                                        config["network_options"] = {
+                                            "hidden_layers": config["hidden_layers"],
+                                            "snn_tSteps": config["snn_tSteps"],
+                                            "snn_beta": config["snn_beta"]
+                                        }
+
+                                if config["architecture"] == "ann":
+                                    if config["algorithm"] == "PPO":
+                                        config["network_actor"] = config["architecture"]
+                                        config["network_actor_options"] = {
+                                            "hidden_layers": config["hidden_layers"],
+                                        }
+
+                                        config["network_critic"] = config["architecture"]
+                                        config["network_critic_options"] = {
+                                            "hidden_layers": config["hidden_layers"],
+                                        }
+                                    if config["algorithm"] == "DDQN":
+                                        config["network"] = config["architecture"]
+                                        config["network_options"] = {
+                                            "hidden_layers": config["hidden_layers"],
+                                        }
+                            
+                            if ("network_options" in config) and ("hidden_layers_actor" in config["network_options"]):
+                                if config["network"] == "ann":
+                                    config["network_actor"] = config["network"]
+                                    config["network_actor_options"] = {
+                                        "hidden_layers": config["network_options"]["hidden_layers_actor"],
+                                    }
+
+                                    config["network_critic"] = config["network"]
+                                    config["network_critic_options"] = {
+                                        "hidden_layers": config["network_options"]["hidden_layers_critic"],
+                                    }
+                                elif config["network"] == "snn":
+                                    config["network_actor"] = config["network"]
+                                    config["network_actor_options"] = {
+                                        "hidden_layers": config["network_options"]["hidden_layers_actor"],
+                                        "snn_tSteps": config["network_options"]["snn_tSteps"],
+                                        "snn_beta": config["network_options"]["snn_beta"],
+                                    }
+
+                                    config["network_critic"] = config["network"]
+                                    config["network_critic_options"] = {
+                                        "hidden_layers": config["network_options"]["hidden_layers_critic"],
+                                        "snn_tSteps": config["network_options"]["snn_tSteps"],
+                                        "snn_beta": config["network_options"]["snn_beta"],
+                                    }
+
                             _dict = {
                                 "session": os.getenv("session_name"),
                                 "run": root.split(os.sep)[-1], # Run's number
@@ -99,9 +207,9 @@ def collect_target_files(run_dir):
                                 "minEpisodeTimesteps": _minTimesteps,
                                 "maxPoint": _maxPoints,
                                 "algorithm": config["algorithm"],
-                                "environment": config["env"],
+                                "environment": config["env"] if "env" in config else "*",
                                 "learning_rate": config["algorithm_options"]["learning_rate"],
-                                "maxNumTimeSteps": config["algorithm_options"]["maxNumTimeSteps"],
+                                "maxNumTimeSteps": config["algorithm_options"]["maxNumTimeSteps"] if "maxNumTimeSteps" in config["algorithm_options"] else -1 ,
                                 
                                 # PPO algogrithm
                                 "gamma": config["algorithm_options"]["gamma"] if config["algorithm"] == "PPO" else "*",
@@ -123,16 +231,21 @@ def collect_target_files(run_dir):
 
                                 # Network details
                                 "network_1_type": config["network_actor"] if config["algorithm"] == "PPO" else config["network"],
-                                "network_1_details": config["network_actor_options"]["snn_tSteps"] if config["algorithm"] == "PPO" else "*",
+                                "network_1_details": config["network_actor_options"]["snn_tSteps"] if config["algorithm"] == "PPO" and "snn_tSteps" in config["network_critic_options"] == "PPO" else "*",
                                 "network_1_layers": config["network_actor_options"]["hidden_layers"] if config["algorithm"] == "PPO" else config["network_options"]["hidden_layers"],
                                 "network_2_type": config["network_critic"] if config["algorithm"] == "PPO" else config["network"],
-                                "network_2_details": config["network_critic_options"]["snn_tSteps"] if config["algorithm"] and "snn_tSteps" in config["network_critic_options"] == "PPO" else "*",
+                                "network_2_details": config["network_critic_options"]["snn_tSteps"] if config["algorithm"] == "PPO" and "snn_tSteps" in config["network_critic_options"] == "PPO" else "*",
                                 "network_2_layers": config["network_critic_options"]["hidden_layers"] if config["algorithm"] == "PPO" else config["network_options"]["hidden_layers"],
                             }
                             runsDataDf.append(_dict)
 
                     except Exception as e:
-                        print(e)
+                        from pprint import pprint
+                        print("aaaaaa", e)
+                        print("file:", root)
+                        pprint(config)
+                        traceback.print_exc()   
+                        exit()
 
                         # Add data to the dataframe
                         runsDataDf.append({
