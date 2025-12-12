@@ -1,4 +1,4 @@
-import os, torch, re, sys, json, zipfile, json
+import os, torch, re, sys, json, zipfile, json, shutil, traceback
 from pprint import pprint
 import pandas as pd
 from dotenv import load_dotenv
@@ -120,6 +120,14 @@ def collect_target_files(run_dir):
                                 "startEbsilon": config["algorithm_options"]["startEbsilon"] if config["algorithm"] == "DDQN" else "*",
                                 "endEbsilon": config["algorithm_options"]["endEbsilon"] if config["algorithm"] == "DDQN" else "*",
                                 "numUpdateTS": config["algorithm_options"]["numUpdateTS"] if config["algorithm"] == "DDQN" else "*",
+
+                                # Network details
+                                "network_1_type": config["network_actor"] if config["algorithm"] == "PPO" else config["network"],
+                                "network_1_details": config["network_actor_options"]["snn_tSteps"] if config["algorithm"] == "PPO" else "*",
+                                "network_1_layers": config["network_actor_options"]["hidden_layers"] if config["algorithm"] == "PPO" else config["network_options"]["hidden_layers"],
+                                "network_2_type": config["network_critic"] if config["algorithm"] == "PPO" else config["network"],
+                                "network_2_details": config["network_critic_options"]["snn_tSteps"] if config["algorithm"] and "snn_tSteps" in config["network_critic_options"] == "PPO" else "*",
+                                "network_2_layers": config["network_critic_options"]["hidden_layers"] if config["algorithm"] == "PPO" else config["network_options"]["hidden_layers"],
                             }
                             runsDataDf.append(_dict)
 
@@ -171,23 +179,40 @@ def create_zip(session_name, runs_root, output_zip):
         workbook = writer.book
         sheet = workbook["Sheet1"]
 
-        # Find column indices of the two columns you want to group
-        cols = list(runsDataDf.columns)
+        # Get necessary column numbers
+        headerMap = {cell.value: cell.column for cell in sheet[1]}
+        ppoStartColNum = headerMap.get("gamma")
+        ppoEndColNum = headerMap.get("gae_lambda")
+        ddqnStartColNum = headerMap.get("decay")
+        ddqnEndColNum = headerMap.get("numUpdateTS")
+        
+        for k in range(1,3):
+            x1 = sheet.max_column + 1
+            sheet.insert_cols(x1)
+            sheet.cell(row=1, column = x1).value = f"Network_{k}_type"
+            sheet.insert_cols(x1 + 1)
+            sheet.cell(row=1, column = x1 + 1).value = f"Network_{k}_details"
+            sheet.insert_cols(x1 + 2)
+            sheet.cell(row=1, column = x1 + 2).value = f"Network_{k}_layers"
 
         # Make header for each algorithm
         sheet.insert_rows(1)
-        for i in range(1,18):
+
+        for i in range(1,ppoStartColNum):
+            sheet.cell(row=1, column = i).value = sheet.cell(row=2, column = i).value
+            sheet.merge_cells(start_row =  1, start_column = i, end_row = 2, end_column = i)
+        for i in range(ddqnEndColNum+1,sheet.max_column+1):
             sheet.cell(row=1, column = i).value = sheet.cell(row=2, column = i).value
             sheet.merge_cells(start_row =  1, start_column = i, end_row = 2, end_column = i)
         
         # Merge cells for PPO and DDQN headers
-        # PPO starts at column 18 and ends  on 24
-        sheet.merge_cells(start_row =  1, start_column = 18, end_row = 1, end_column = 24)
-        sheet.cell(row=1, column = 18).value = "PPO"
+        # PPO starts at column ppoStartColNum and ends  on ppoEndColNum
+        sheet.merge_cells(start_row =  1, start_column = ppoStartColNum, end_row = 1, end_column = ppoEndColNum)
+        sheet.cell(row=1, column = ppoStartColNum).value = "PPO"
         
-        # DDQN starts at column 25 and ends on 30
-        sheet.merge_cells(start_row =  1, start_column = 25, end_row = 1, end_column = 30)
-        sheet.cell(row=1, column = 25).value = "DDQN"
+        # DDQN starts at column ddqnStartColNum and ends on ddqnEndColNum
+        sheet.merge_cells(start_row =  1, start_column = ddqnStartColNum, end_row = 1, end_column = ddqnEndColNum)
+        sheet.cell(row=1, column = ddqnStartColNum).value = "DDQN"
 
         # Style cells
         for row in sheet.iter_rows():
@@ -210,6 +235,7 @@ def create_zip(session_name, runs_root, output_zip):
 
             # Add small extra space for padding
             sheet.column_dimensions[col_letter].width = max_length + .2
+
     
     with zipfile.ZipFile(output_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
 
@@ -398,6 +424,124 @@ if __name__ == "__main__":
                 raise Exception("Invalid JSON format in --check_duplicate_config parameter. Configuration should be passed exactly after --check_duplicate_config flag.")
         elif "--upload_to_telegram" in sys.argv:
             main()
+        elif "--analyze_results" in sys.argv:
+            # After --analyze_results, paths to the zip files to be analyze should be passed 
+            _start = sys.argv.index("--analyze_results") + 1
+            files = sys.argv[_start:]
+
+            if files == []:
+                print("No files to analyze. Please pass paths to the zip files to be analyze after --analyze_results flag.")
+                sys.exit(1)
+
+            # Get file location
+            _loc = os.path.dirname(os.path.abspath(__file__))
+
+            # Refresh the analysis directory
+            if os.path.isdir(os.path.join(_loc, "analysis")):
+                shutil.rmtree(os.path.join(_loc, "analysis"), ignore_errors=False)
+            os.makedirs(os.path.join(_loc, "analysis"), exist_ok=True)
+
+            # Runs dataframe
+            data = []
+
+            for file in files:
+                sessionName = (os.path.basename(file).split(".")[0]).split("_")[0]
+                with zipfile.ZipFile(file, 'r') as zip_ref:
+                    os.makedirs(os.path.join(_loc, "analysis", sessionName), exist_ok=True)
+                    zip_ref.extractall(os.path.join(_loc, "analysis", sessionName))
+
+                    runsDataDf = pd.read_excel(os.path.join(_loc, "analysis", sessionName, f"{sessionName}_trainingRunsData.xlsx"), header=[0, 1])
+                    data += runsDataDf.to_dict(orient="records")
+
+            # Save the dataframe to excel
+            with ExcelWriter(os.path.join(_loc, "analysis", "AllRuns.xlsx"), engine="openpyxl") as writer:
+                df = pd.DataFrame(data, columns=runsDataDf.columns)
+                df.to_excel(writer, sheet_name="Sheet1")
+
+                # Get the workbook and sheet
+                workbook = writer.book
+                sheet = workbook["Sheet1"]
+
+                for col in sheet.columns:
+                    for cell in col:
+                        if isinstance(cell.value, str) and "Unnamed" in cell.value:
+                            _postMergeValue = sheet.cell(row=cell.row-1, column=cell.column).value
+                            sheet.merge_cells(start_row =  cell.row-1, start_column = cell.column, end_row = cell.row, end_column = cell.column)
+                            sheet.cell(row=cell.row-1, column=cell.column).value = _postMergeValue
+
+                # Add images columns
+                _colEpisodeReward = sheet.max_column + 1
+                sheet.insert_cols(idx = _colEpisodeReward)
+                sheet.cell(row=1, column= _colEpisodeReward).value = "episodeReward"
+                _colTrainingProcess = sheet.max_column + 1
+                sheet.insert_cols(idx = _colTrainingProcess)
+                sheet.cell(row=1, column= _colTrainingProcess).value = "trainingProcess"
+                _colGradientNorms = sheet.max_column + 1
+                sheet.insert_cols(idx = _colGradientNorms)
+                sheet.cell(row=1, column= _colGradientNorms).value = "gradientNorms"
+                
+                # Delete empty row
+                sheet.delete_rows(idx=3)
+
+                # Add links
+                i = 0
+                for row in sheet.iter_rows():
+                    i+=1
+                    if i <2: continue
+                    session = row[1].value
+                    runNum = row[2].value
+
+                    try:
+                        if os.path.exists(os.path.join(_loc, "analysis", session, f"{(runNum)}", "episode_rewards.png")):
+                            row[_colEpisodeReward-1].value = "Link"
+                            row[_colEpisodeReward-1].hyperlink = f"file:///{os.path.join(_loc, 'analysis', session, f'{(runNum)}', f'episode_rewards.png')}"
+                            row[_colEpisodeReward-1].style = "Hyperlink"
+                        else: 
+                            row[_colEpisodeReward-1].value = "No Data"
+                        
+                        if os.path.exists(os.path.join(_loc, "analysis", session, f"{(runNum)}", "training_process.png")):
+                            row[_colTrainingProcess-1].value = "Link"
+                            row[_colTrainingProcess-1].hyperlink = f"file:///{os.path.join(_loc, 'analysis', session, f'{(runNum)}', f'training_process.png')}"
+                            row[_colTrainingProcess-1].style = "Hyperlink"
+                        else: 
+                            row[_colTrainingProcess-1].value = "No Data"    
+                        
+                        if os.path.exists(os.path.join(_loc, "analysis", session, f"{(runNum)}", "gradient_norms.png")):
+                            row[_colGradientNorms-1].value = "Link"
+                            row[_colGradientNorms-1].hyperlink = f"file:///{os.path.join(_loc, 'analysis', session, f'{(runNum)}', f'gradient_norms.png')}"
+                            row[_colGradientNorms-1].style = "Hyperlink"
+                        else:
+                            row[_colGradientNorms-1].value = "No Data"    
+
+                    except Exception as e:
+                        print(f"Error -> {i} - {e}")
+                        traceback.print_exc() 
+                        continue
+                    
+
+                # Style cells
+                for row in sheet.iter_rows():
+                    for cell in row:
+                        cell.font = Font(name="Calibri", bold=False)
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+                # Set cell widths
+                for col in sheet.columns:
+                    max_length = 0
+                    col_letter = get_column_letter(col[0].column)
+
+                    for cell in col:
+                        try:
+                            cell_len = len(str(cell.value))
+                            if cell_len > max_length:
+                                max_length = cell_len
+                        except:
+                            pass
+
+                    # Add small extra space for padding
+                    sheet.column_dimensions[col_letter].width = max_length + .2
+                    
+
         else:
             print("No valid flag found. Use --check_duplicate_config or --upload_to_telegram.")
     except Exception as e:
