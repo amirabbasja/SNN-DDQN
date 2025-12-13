@@ -80,7 +80,7 @@ def collect_target_files(run_dir):
                         _avgEpisodeDuration = saveDf['duration'].mean()
                         _minEpisodeDuration = saveDf['duration'].min()
                         _totalTimesteps = saveDf['timesteps'].sum()
-                        _maxPoints = saveDf['points'].max()
+                        _maxPoints = saveDf['points'].rolling(window=100, min_periods=1).mean().max()
                         
                         # Add data to the dataframe. Do not add the backup folder
                         if "Backups" not in root:
@@ -205,7 +205,7 @@ def collect_target_files(run_dir):
                                 "maxEpisodeTimesteps": _maxTimesteps,
                                 "avgEpisodeTimesteps": _avgTimesteps,
                                 "minEpisodeTimesteps": _minTimesteps,
-                                "maxPoint": _maxPoints,
+                                "avg100PointMax": _maxPoints,
                                 "algorithm": config["algorithm"],
                                 "environment": config["env"] if "env" in config else "*",
                                 "learning_rate": config["algorithm_options"]["learning_rate"],
