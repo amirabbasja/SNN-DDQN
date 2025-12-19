@@ -1,6 +1,8 @@
 .Data
 .runs_data
 .env
+tmp
+analysis
 __pycache__
 conf.json
 runs_data/*

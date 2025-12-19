@@ -202,6 +202,20 @@ def sendTelegramMessage(bot_token, chat_id, message):
     response = requests.post(url, data=payload)
     return response.json()
 
+
+def countRunningInstances():
+    try:
+        if os.name == 'nt':
+            out = subprocess.check_output(['wmic', 'process', 'where', "CommandLine like '%run.py%'", 'get', 'ProcessId,CommandLine'], text=True)
+            lines = [l for l in out.splitlines() if l.strip() and 'CommandLine' not in l]
+            return len(lines)
+        else:
+            out = subprocess.check_output(['ps', '-eo', 'pid,ppid,cmd'], text=True)
+            lines = [l for l in out.splitlines() if 'run.py' in l]
+            return len(lines)
+    except Exception:
+        return 0
+
 # # Install packages
 # subprocess.check_call([sys.executable, "-m", "pip", "install", "swig"])
 # subprocess.check_call([sys.executable, "-m", "pip", "install", 'gymnasium[box2d]'])
@@ -241,6 +255,11 @@ if "--forcenewrun" in sys.argv:
     forceNewRun = True
     sys.argv.remove("--forcenewrun")
 
+monitorInstances = False
+if "--monitorinstances" in sys.argv:
+    monitorInstances = True
+    sys.argv.remove("--monitorinstances")
+
 # Check to see if new parameters are forced, if not, default to conf.json file
 if "--forceconfig" in sys.argv:
     print("Forcing new configuration...")
@@ -277,7 +296,11 @@ endTime = startTime + data["train_max_time"]  # 3.5 hours
 maxRunTime = data["max_run_time"]
 
 if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
-    sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training started for session {os.getenv('session_name')}")
+    _msg = f"Training started for session {os.getenv('session_name')}"
+    if monitorInstances:
+        _cnt = countRunningInstances()
+        _msg = _msg + f" | run.py instances: {_cnt}"
+    sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), _msg)
 
 # Replace the conf.json contents with the new parameters
 if "--forceconfig" in sys.argv:
@@ -296,9 +319,16 @@ while time.time() < endTime:
 
         if _updatedJson["finished"]:
             print("The config has been marked as finished. Exiting...")
+            sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f" {os.getenv('session_name')} | The config has been marked as finished. Exiting...")
             break
 
     # Run parameters
+    if monitorInstances:
+        try:
+            _cnt = countRunningInstances()
+            print(f"[monitor] {os.getenv('session_name')}: run.py instances: {_cnt}")
+        except Exception:
+            pass
     if data["algorithm"] == "DDQN":
         argsDict = {
             "name": data["name"],
@@ -433,6 +463,10 @@ while time.time() < endTime:
     trainingEpoch += 1
 
 if(os.getenv("telegram_chat_id") and os.getenv("telegram_bot_token") and os.getenv("telegram_bot_token") != "."):
-    sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), f"Training finished for session {os.getenv('session_name')}. Took {((time.time() - startTime)/3600):.2f} hours.")
+    _end_msg = f"Training finished for session {os.getenv('session_name')}. Took {((time.time() - startTime)/3600):.2f} hours."
+    if monitorInstances:
+        _cnt = countRunningInstances()
+        _end_msg = _end_msg + f" | run.py instances: {_cnt}"
+    sendTelegramMessage(os.getenv("telegram_bot_token"), os.getenv("telegram_chat_id"), _end_msg)
 
 print(f"Reached the maximum run time. Trained {trainingEpoch} epochs")
