@@ -255,6 +255,10 @@ if "--forcenewrun" in sys.argv:
     forceNewRun = True
     sys.argv.remove("--forcenewrun")
 
+if "--onlyshowrunninginstances" in sys.argv:
+    print(f"Running instances for {os.getenv('session_name')}: {countRunningInstances()}")
+    exit()
+
 monitorInstances = False
 if "--monitorinstances" in sys.argv:
     monitorInstances = True

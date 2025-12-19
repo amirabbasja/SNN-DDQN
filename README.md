@@ -45,6 +45,8 @@ To run the code, two important files are required which are not added to repo an
     * Run the file with a `--forceconfig` flag which with doing so, the app will disregard all of the configs present  in the *conf.json* file. With passing the `--forceconfig` flag, the app expects you to pass the entire configuration as a JSON string with `--config <JSON string>` argument.
     * Run with `--skipupdate` flag to skip updating the code base and directly start training.
     * Run with `--onlyupdate` flag to only update the code base and not start training.
+    * Add `--monitorinstances` flag when running the file to monitor the instances running in the background.
+    * Run with `--onlyshowrunninginstances` flag to only show the instances running in the background and not start training.
 
 4. *train.py:* Performs the training process. Shouldn't be ran stand-alone.
 
