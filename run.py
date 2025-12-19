@@ -202,17 +202,30 @@ def sendTelegramMessage(bot_token, chat_id, message):
     response = requests.post(url, data=payload)
     return response.json()
 
-
 def countRunningInstances():
     try:
-        if os.name == 'nt':
-            out = subprocess.check_output(['wmic', 'process', 'where', "CommandLine like '%run.py%'", 'get', 'ProcessId,CommandLine'], text=True)
+        if os.name == 'nt': # windows
+            out = subprocess.check_output([
+                'wmic', 'process', 'where',
+                "CommandLine like '%python%' AND (CommandLine like '%train_DDQN.py%' OR CommandLine like '%train_PPO.py%')",
+                'get', 'ProcessId,CommandLine'
+            ], text=True)
             lines = [l for l in out.splitlines() if l.strip() and 'CommandLine' not in l]
             return len(lines)
-        else:
-            out = subprocess.check_output(['ps', '-eo', 'pid,ppid,cmd'], text=True)
-            lines = [l for l in out.splitlines() if 'run.py' in l]
-            return len(lines)
+        else: # linux
+            out = subprocess.check_output(['ps', '-eo', 'pid,ppid,comm,args'], text=True)
+            count = 0
+            pids = []
+            for l in out.splitlines():
+                parts = l.strip().split(None, 3)
+                if len(parts) < 4:
+                    continue
+                pid, ppid, comm, args = parts
+                if (('train_DDQN.py' in args) or ('train_PPO.py' in args)) and (comm.endswith('python') or comm.endswith('python3')):
+                    if ppid not in pids:
+                        count += 1
+                    pids.append(pid)
+            return count
     except Exception:
         return 0
 
