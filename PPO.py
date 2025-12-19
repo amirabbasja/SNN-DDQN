@@ -248,7 +248,6 @@ class PPO:
             episodeRewards = []
             
             randomSeed = random.randint(0, 1_000_000_000 if self.extraInfo == "" else int(self.extraInfo.replace("maxSeed_", "")))
-            print(f"Seed: {randomSeed} | maxSeed {self.extraInfo.replace('maxSeed_', '')}")
             startTimestep = t
             startTimestamp = time.time()
             obs, info = self.env.reset(seed = randomSeed)
