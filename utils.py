@@ -1,9 +1,5 @@
 from collections import deque, namedtuple
-import os
-import argparse
-import requests
-import subprocess
-import json
+import json, importlib, argparse, os, shutil
 from typing import Union, Dict
 
 
@@ -12,7 +8,6 @@ import pandas as pd
 import random, imageio, time, copy
 import numpy as np
 import gymnasium as gym
-import shutil
 import matplotlib.pyplot as plt
 
 import torch.nn as nn
@@ -424,6 +419,45 @@ def testAgent(envName:str, network, __device, __dtype, saveVideoName:str = "", )
     point = interactionLoop(environment, seed, True if saveVideoName != "" else False)
 
     return point
+
+# General utility functions
+
+
+def checkAndImportClass(moduleName, className):
+    """
+    Checks if a class exists in a module, imports it if present, and verifies it's a class.
+    
+    Args:
+        moduleName (str): The name of the module (e.g., 'datetime').
+        className (str): The name of the class (e.g., 'datetime').
+    
+    Returns:
+        The class if found and valid, else None.
+    """
+    try:
+        # Dynamically import the module
+        module = importlib.import_module(moduleName)
+        
+        # Check if the class exists in the module
+        if hasattr(module, className):
+            Class = getattr(module, className)
+            
+            # Verify it's imported correctly (i.e., it's a class type)
+            if isinstance(Class, type):
+                print(f"Success: Class '{className}' found and imported from '{moduleName}'.")
+                return Class
+            else:
+                print(f"Warning: '{className}' exists in '{moduleName}' but is not a class.")
+                return None
+        else:
+            print(f"Class '{className}' not found in module '{moduleName}'.")
+            return None
+    except ImportError:
+        print(f"Module '{moduleName}' not found or could not be imported.")
+        return None
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
 
 def saveModel(data, location, backup = True, upload = {}):
     """

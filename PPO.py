@@ -165,7 +165,10 @@ class PPO:
         self.startEpisode = 0
         self.lstHistory = None # A list of dictionaries for storing episode history
         self.lstActions = [] # Fills only if debugMode is active
-        self.avgReward = -float('inf') # The average reward of the last avgWindow episodes
+        self.rewardsMem = [0] # Stores the reward of each episode
+        self.actorLossMem = [0] # Stores the actor loss of each update
+        self.criticLossMem = [0] # Stores the critic loss of each update
+        self.avgReward = -999999 # The average reward of the last avgWindow episodes
 
         if self.continueLastRun:
             try:
@@ -196,6 +199,13 @@ class PPO:
                 self.overallTimestep = 0
 
         print(f"Device is: {self.device}")
+
+        # Counters
+        self._lastPrintTime = None
+        self._trainingStartTime = None
+        self._latestCheckpoint = None
+        self.avgCriticLoss = 0.0
+        self.avgActorLoss = 0.0
 
     def getActions(self, obs):
         """
@@ -242,6 +252,7 @@ class PPO:
         batchEpisodeLengths = []
         _stopTraining = False
         
+        episodeStartTime = time.time()
         t = 0
         while t < self.timeStepsPerBatch:
             # Rewards per episode
@@ -337,7 +348,7 @@ class PPO:
                     }
 
                     # Save the episode number
-                    latestCheckpoint = episodeNumber
+                    self.latestCheckpoint = episodeNumber
                     saveModel(backUpData, os.path.join(self.runSavePath, self.saveFileName))
             
             # Upload the lightweight progress data to cloud
@@ -350,9 +361,9 @@ class PPO:
                 episodeData = {
                     "session_name": self.sessionName,
                     "episode": episodeNumber,
-                    "reward": reward,
-                    "avg_reward": self.avgReward,
-                    "Win Percentage (last 100)": self._last100WinPercentage,
+                    "reward": float(reward),
+                    "avg_reward": float(self.avgReward),
+                    "Win Percentage (last 100)": float(self._last100WinPercentage),
                 }
                 
                 with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:
@@ -362,6 +373,20 @@ class PPO:
             if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
                 # Plot the progress
                 self.plotProgress()
+
+                # update averages
+                self.avgActorLoss = np.array(self.actorLossMem[-self.avgWindow:]).mean()
+                self.avgCriticLoss = np.array(self.criticLossMem[-self.avgWindow:]).mean()
+                self.avgReward = np.array(self.rewardsMem[-self.avgWindow:]).mean()
+            
+            self._lastPrintTime = self._printProgress(
+                1, self._lastPrintTime, self._trainingStartTime,
+                t = t, episode = episodeNumber, finishTime = self._trainingStartTime + self.maxRunTime, latestCheckpoint = self._latestCheckpoint,
+                episodeStartTime = episodeStartTime, 
+                avgActorLoss = self.avgActorLoss, 
+                avgCriticLoss = self.avgCriticLoss, 
+                avgReward = self.avgReward
+            )
 
             batchEpisodeLengths.append(tEpisode + 1)
             batchRewards.append(episodeRewards)
@@ -431,24 +456,20 @@ class PPO:
         return batchRewardsToGo
     
     def learn(self):
-        rewardsMem = []
-        criticLossMem = []
-        actorLossMem = []
         self.lstHistory = [] if self.lstHistory == None else self.lstHistory
         _stopTraining = False
 
         t = self.overallTimestep
         episode = self.startEpisode
-        _lastPrintTime = time.time()
-        _trainingStartTime = time.time()
-        _latestCheckpoint = 0
-        _finishTime = _trainingStartTime + self.maxRunTime
+        self._lastPrintTime = time.time()
+        self._trainingStartTime = time.time()
+        _finishTime = self._trainingStartTime + self.maxRunTime
+
         while episode < self.totalEpisodes:
-            # Collect data
-            episodeStartTime = time.time()
+            # Collect data for each batch
             batchObs, batchActions, batchLogProbs, batchRewardsToGo, batchEpisodeLengths, batchRewards, cumEpisodeRewards, _stopTraining = self.rollout(episode)
             episode += len(batchEpisodeLengths)
-            rewardsMem.extend(cumEpisodeRewards)
+            self.rewardsMem.extend(cumEpisodeRewards)
             
             # Increment time step
             t += np.sum(batchEpisodeLengths)
@@ -474,8 +495,8 @@ class PPO:
                     # Actor loss with entropy bonus
                     actorLoss = -torch.min(surr1, surr2).mean() - self.entropyCoef * entropy.mean()
                     criticLoss = nn.MSELoss()(V, batchRewardsToGo)
-                    actorLossMem.append(actorLoss.item())
-                    criticLossMem.append(criticLoss.item())
+                    self.actorLossMem.append(actorLoss.item())
+                    self.criticLossMem.append(criticLoss.item())
 
                     # Per-batch aggregation, keeping them to add their average amount to self.lstHistory
                     batchActorLosses.append(actorLoss.item())
@@ -499,28 +520,17 @@ class PPO:
                     hist["avgActorLoss"] = avgActorLossBatch
                     hist["avgCriticLoss"] = avgCriticLossBatch
             else:
-                print(f"Skipping the network update as the last 100 episodes win percentage is {self._last100WinPercentage:.2f}% which is above the threshold of {self.stopLearningPercent:.2f}%")
+                print(f"The network update as the last 100 episodes win percentage is {self._last100WinPercentage:.2f}% which is above the threshold of {self.stopLearningPercent:.2f}%")
                 # Still set None to make plotting easier
                 nEpisodesInBatch = len(batchEpisodeLengths)
                 for hist in self.lstHistory[-nEpisodesInBatch:]:
                     hist["avgActorLoss"] = None
                     hist["avgCriticLoss"] = None
-
-            # Print the training status. Print only once each 
-            self.avgReward = np.array(rewardsMem[-self.avgWindow:-1]).mean()
-            _lastPrintTime = self._printProgress(
-                1, _lastPrintTime, _trainingStartTime,
-                t = t, episode = episode, finishTime = _trainingStartTime + self.maxRunTime, latestCheckpoint = _latestCheckpoint,
-                episodeStartTime = episodeStartTime, 
-                avgActorLoss = np.array(actorLossMem[-self.avgWindow:-1]).mean(), 
-                avgCriticLoss = np.array(criticLossMem[-self.avgWindow:-1]).mean(), 
-                avgReward = self.avgReward
-            )
             
             if _finishTime < time.time(): break
             if _stopTraining: break
 
-        return rewardsMem, actorLossMem, criticLossMem
+        return self.rewardsMem, self.actorLossMem, self.criticLossMem
 
     def plotProgress(self):
         """

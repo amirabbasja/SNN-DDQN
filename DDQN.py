@@ -526,9 +526,9 @@ class DDQN():
                 episodeData = {
                     "session_name": self.sessionName,
                     "episode": episode,
-                    "reward": points,
-                    "avg_reward": self.avgReward,
-                    "Win Percentage (last 100)": self._last100WinPercentage,
+                    "reward": float(points),
+                    "avg_reward": float(self.avgReward),
+                    "Win Percentage (last 100)": float(self._last100WinPercentage),
                 }
                 
                 with open(os.path.join(self.runSavePath, f"training_details.json"), 'w') as f:

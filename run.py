@@ -416,6 +416,10 @@ while time.time() < endTime:
             scriptArgs.extend([f"--debug"]) if value else None
             continue
         
+        if name == "env_options":
+            scriptArgs.extend([f"--env_options", json.dumps(value)])
+            continue
+        
         if name == "algorithm_options":
             scriptArgs.extend([f"--algorithm_options", json.dumps(value)])
             continue

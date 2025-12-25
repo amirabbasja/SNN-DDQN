@@ -61,12 +61,35 @@ else:
     shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
 
 # Make the environment
-env = gym.make(args.env)
-state, info = env.reset() # Get a sample state of the environment 
-stateSize = env.observation_space.shape # Number of variables to define current step 
-nActions = env.action_space.n # Number of actions 
-actionSpace = np.arange(nActions).tolist() 
+if args.env in ["LunarLander-v3"]:
+    try:
+        env = gym.make(args.env)
+        state, info = env.reset() # Get a sample state of the environment 
+        stateSize = env.observation_space.shape # Number of variables to define current step 
+        nActions = env.action_space.n # Number of actions 
+        actionSpace = np.arange(nActions).tolist() 
+    except:
+        raise ValueError(f"Error when making the environment {args.env}")
+else:
+    # Custom environment - Look for environment class in ./envs/<name>/<name>.py:<name>
+    # where <name> is the name of the custom environemnt
+    if not os.path.isfile(f"./envs/{args.env}/{args.env}.py"):
+        raise Exception(f"Custom environemnt {args.env} not found in /envs/{args.env}/{args.env}.py")
+    
+    # Import the environment class
+    envClass = checkAndImportClass(f"envs.{args.env}.{args.env}", args.env)
+    if envClass is None:
+        raise ValueError(f"Error when importing the custom environment class {args.env}")
+    try:
 
+        env = envClass(**args.env_options)
+        state, info = env.reset() # Get a sample state of the environment 
+        stateSize = env.nObservationSpace # Number of variables to define current step 
+        nActions = env.nActionSpace # Number of actions 
+        actionSpace = np.arange(nActions).tolist() 
+    except Exception as e:
+        raise ValueError(f"Error when making the custom environment {args.env}: {str(e)}")
+    
 # Make the model objects
 if args.network_actor == "ann":
     actorNetwork = qNetwork_ANN([stateSize[0], *args.network_actor_options["hidden_layers"], nActions])
