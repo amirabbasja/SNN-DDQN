@@ -919,9 +919,9 @@ def plotTrainingProcess(df, saveLoc):
     df["isTruncated"] = df["state"] == "truncated"
     df["truncatedSum"] = df["isTruncated"].cumsum()
 
-    df["wonEpisode"] = 75 < df["finalEpisodeReward"]
-    df["wonEpisodeCount"] = df["wonEpisode"].cumsum()
-    df["wonEpisodeCountLas100"] = df["wonEpisode"].rolling(window=100).sum()
+    df["wonEpisodes"] = True == df["isWon"]
+    df["wonEpisodeCount"] = df["wonEpisodes"].cumsum()
+    df["wonEpisodeCountLas100"] = df["wonEpisodes"].rolling(window=100).sum()
     df["wonEpisodeCountPercent"] = df["wonEpisodeCount"] / (df["episode"] + 1) * 100
     df["wonEpisodeCountLas100Percent"] = df["wonEpisodeCountLas100"] / 100 * 100
 
