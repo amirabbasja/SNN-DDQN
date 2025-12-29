@@ -1009,3 +1009,24 @@ def plotGradientNorms(df, saveLoc):
     # Save plot
     plt.savefig(saveLoc)
     plt.close()
+
+def checkWinCondition(envName, **kwargs) -> bool:
+    """
+    Checks if the win condition is met based on recent training history.
+    Every environment needs different variables to check the win condition.
+
+    Args:
+        envName (str): The name of the environment.
+
+    Returns:
+        bool: True if the win condition is met, False otherwise.
+    """
+    if envName == "LunarLander-v3":
+        if "lastEpisodeReward" in kwargs.keys():
+            # LunarLander-v3 agent is given +100 pints for landing
+            # safely and -100 for crashes
+            return kwargs["lastEpisodeReward"] >= 75
+        else:
+            raise ValueError("lastEpisodeReward is required to check win condition for LunarLander-v3")
+    else:
+        raise ValueError(f"Win condition check not implemented for environment: {envName}")

@@ -167,6 +167,7 @@ class DDQN():
         self.startEpisode = 0
         self.startEbsilon = None
         self.lstHistory = None
+        self.wonHistory = []
         self.avgReward = -float("inf")
         if self.continueLastRun and os.path.isfile(os.path.join(self.runSavePath, self.saveFileName)):
             # Load necessary parameters to resume the training from most recent run 
@@ -345,7 +346,7 @@ class DDQN():
                 - episodeStartTime (int): The timestamp when the current episode started
         """
 
-        # Print the training status. Print only once each delay second to avoid jitters.
+        # Print the training status. Print only once each delay second to avoid jitters. 
         if delay < (time.time() - lastPrintTime):
             os.system('cls' if os.name == 'nt' else 'clear')
             lastPrintTime = time.time()
@@ -456,8 +457,6 @@ class DDQN():
                 )
                 
                 if terminated or truncated or __finishTime < time.time(): break
-            
-            self._last100WinPercentage = np.sum([1 if exp["finalEpisodeReward"] > 75 else 0 for exp in self.lstHistory[-100:]]) / 100
 
             # Save the episode history
             self.lstHistory.append({
@@ -474,8 +473,11 @@ class DDQN():
                 "avgSpikesPerLayer": [spikes/t for spikes in _spikesPerLayer] if self.networkArchitecture == "snn" and self.debugMode else None,
                 "nActionInEpisode": _nActionInEpisode,
                 "totalGradientNorms": _gradientNorms if self.debugMode else None,
-                "layerWiseNorms": _layerWiseNorms if self.debugMode else None
+                "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
+                "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
             })
+            
+            self._last100WinPercentage = np.sum([1 if exp["isWon"] else 0 for exp in self.lstHistory[-100:]]) / 100
         
             # Saving the current episode's points and time
             episodePointHist.append(points)

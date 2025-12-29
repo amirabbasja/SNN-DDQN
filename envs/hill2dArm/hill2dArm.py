@@ -212,6 +212,7 @@ class hill2dArm(gym.Env):
         reward = 0
         terminated = False
         truncated = False
+        won = False
 
         # Suitability conditions
         cond1 = self.envParams["suitableThetaRange"][0] <= self.state[0] <= self.envParams["suitableThetaRange"][1]
@@ -225,6 +226,7 @@ class hill2dArm(gym.Env):
             if 10 < self._stepsInRange:
                 __successReward = 1
                 terminated = True
+                won = True
                 print("REACHED SUCCESS")
         else:
             self._stepsInRange = 0
@@ -277,7 +279,7 @@ class hill2dArm(gym.Env):
         self.accumulatedRewards["100WinRatio"] = self.endHistory.count(True) / (self.endHistory.count(True) + self.endHistory.count(False) + 1e-6) * 100 # DEBUG
         self.accumulatedRewards["overallWinRatio"] = self.overallWinCount / (self.overallWinCount + self.overallLossCount + 1e-6) * 100 # DEBUG
 
-        return reward, terminated, truncated, [__distreward, __velReward, __inRangeReward, __stepReward, self.__shapingReward(), __relativeShapingReward]
+        return reward, terminated, truncated, won, [__distreward, __velReward, __inRangeReward, __stepReward, self.__shapingReward(), __relativeShapingReward]
 
     def __shapingReward(self):
         """
@@ -411,7 +413,7 @@ class hill2dArm(gym.Env):
         self._stepNum += 1
 
         # Get rewards
-        reward, terminated, truncated, lstRewards = self.__calcRewards()
+        reward, terminated, truncated, won, lstRewards = self.__calcRewards()
         
         info = {
             "distanceReward": lstRewards[0], 
@@ -425,7 +427,8 @@ class hill2dArm(gym.Env):
             "tricepsForce": tricepsForce,
             "bicepsTorque": _bicepsTorqueArm * bicepsForce,
             "tricepsTorque": _tricepsTorqueArm * tricepsForce,
-            "torque": torque
+            "torque": torque,
+            "isWon": won
             } # DEBUG
         self.action_history[action] = self.action_history[action] + 1  # DEBUG
 

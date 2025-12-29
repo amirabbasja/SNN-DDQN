@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from models import *
 import time, os, random
 import json
-from utils import plotEpisodeReward, plotTrainingProcess, plotGradientNorms, loadNetwork, saveModel
+from utils import plotEpisodeReward, plotTrainingProcess, plotGradientNorms, loadNetwork, saveModel, checkWinCondition
 
 class PPO:
     def __init__(self, sessionName, args, networks):
@@ -300,11 +300,9 @@ class PPO:
                 if self.debugMode:
                     episodeActions.append(action)
                 
-                if terminated or truncated: break
+                if terminated or truncated: break 
             
             episodeNumber += 1
-
-            self._last100WinPercentage = np.sum([1 if exp["finalEpisodeReward"] > 75 else 0 for exp in self.lstHistory[-100:]]) / 100
 
             # Save the episode history
             self.lstHistory.append({
@@ -322,7 +320,10 @@ class PPO:
                 "nActionInEpisode": _nActionInEpisode,
                 "totalGradientNorms": _gradientNorms if self.debugMode else None,
                 "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
+                "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
             })
+            
+            self._last100WinPercentage = np.sum([1 if exp["isWon"] else 0 for exp in self.lstHistory[-100:]]) / 100
 
             # Store actions for this episode (only in debug mode)
             if self.debugMode:

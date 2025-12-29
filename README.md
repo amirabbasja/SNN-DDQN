@@ -51,7 +51,7 @@ The scripts support custom environments as well; however, there are couple of po
 
     - truncated: If the episode is truncated, returns true, else it returns false.
 
-    - info: Any extra information that you may need to be returned after taking a step should be returned here. Can be a dictionary.
+    - info: Any extra information that you may need to be returned after taking a step should be returned here. Can be a dictionary. The info dictionary should have  akey called `isWon` which returns true if the episode is won, else it returns false. 
 
 4. Should have two properties: `nObservationSpace` and `nActionSpace` which are the number of variables in the observation space and number of actions respectively.
 

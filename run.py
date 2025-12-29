@@ -299,7 +299,8 @@ else:
             data = json.load(file)
     except Exception:
         raise Exception("Error reading conf.json file. Please check the file format.")
-
+# print(json.dumps(data))
+# exit()
 # Choose script path based on algorithm
 if data["algorithm"] == "PPO":
     scriptPath = "./train_PPO.py"
