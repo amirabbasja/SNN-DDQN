@@ -901,7 +901,7 @@ def plotEpisodeReward(df, saveLoc):
 
     # Create the plot
     plt.figure(figsize=(12, 6))
-    plt.plot(df.episode, df.points, label='Points', color='blue')
+    plt.scatter(df.episode, df.points, label='Points', color='blue', s = 1.5)
     plt.plot(df.episode, df.Moving_Average, label='100 Episode Average', color='red', linewidth=1)
     plt.title('Data with 100-Step Moving Average')
     plt.xlabel('Episode')
