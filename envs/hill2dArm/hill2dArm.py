@@ -305,8 +305,8 @@ class hill2dArm(gym.Env):
             self.state = initState
         else:
             # Reset to a random state
-            self.state = np.array([rng.uniform(0, self.envParams["thetaMax"]), rng.uniform(-self.envParams["omegaMax"], self.envParams["omegaMax"])], dtype=np.float32)
-            self.state[1] = 0
+            # self.state = np.array([rng.uniform(0, self.envParams["thetaMax"]), rng.uniform(-self.envParams["omegaMax"], self.envParams["omegaMax"])], dtype=np.float32)
+            self.state = np.array([rng.uniform(0, self.envParams["thetaMax"]), 0], dtype=np.float32)
 
         # Restart the step number
         self._stepNum = 0
