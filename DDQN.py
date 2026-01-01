@@ -165,6 +165,7 @@ class DDQN():
         self.optimizer_target = networks['optimizer_target']
 
         self.startEpisode = 0
+        self.lstActions = []
         self.startEbsilon = None
         self.lstHistory = None
         self.wonHistory = []
@@ -393,7 +394,8 @@ class DDQN():
             initialSeed = random.randint(1,1_000_000_000) # The random seed that determines the episode's I.C.
             self.state, self.info = self.env.reset(seed = initialSeed)
             points = 0
-            actionString = ""
+            self.lstActions = []
+            initialConditioin = np.copy(self.state)
 
             tempTime = time.time()
 
@@ -441,7 +443,7 @@ class DDQN():
                 # Save the necessary data
                 points += reward
                 self.state = observation.copy()
-                actionString += f"{action},"
+                self.lstActions.append(action)
 
                 # Print the training status. Print only once each second to avoid jitters.
                 _lastPrintTime = self._printProgress(
@@ -478,6 +480,15 @@ class DDQN():
             })
             
             self._last100WinPercentage = np.sum([1 if exp["isWon"] else 0 for exp in self.lstHistory[-100:]]) / 100
+
+            # Store actions for this episode (only in debug mode)
+            if self.debugMode:
+                self.lstActions.append({
+                    "episode": episode,
+                    "initialcondition": initialConditioin,
+                    "seed": initialSeed,
+                    "actions": self.lstActions  # list of ints
+                })
         
             # Saving the current episode's points and time
             episodePointHist.append(points)
@@ -550,6 +561,13 @@ class DDQN():
                     plotGradientNorms(histDf, os.path.join(self.runSavePath, f"gradient_norms.png"))
                 except Exception as e:
                     print("Could not plot the gradient norms. Error:", e)
+
+                # Save actions to a pickle file periodically
+                try:
+                    actions_pickle_path = os.path.join(self.runSavePath, "actions.pkl")
+                    self.saveActionsToPickle(actions_pickle_path)
+                except Exception as e:
+                    print("Could not save actions.pkl. Error:", e)
             
             # Check stop conditions
             if self._stopTraining_maxAvgPoint(self.avgReward) or self._stopTraining_maxEpisodes(episode): 
@@ -579,3 +597,12 @@ class DDQN():
                     json.dump(_conf, f, indent=4)
 
                 return True
+
+    def saveActionsToPickle(self, savePath):
+        """
+        Saves self.lstActions to a pickle file at the given path.
+        """
+        import pickle  # local import to avoid modifying global imports
+        os.makedirs(os.path.dirname(savePath), exist_ok=True)
+        with open(savePath, "wb") as f:
+            pickle.dump(self.lstActions, f)
