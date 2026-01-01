@@ -297,6 +297,7 @@ class hill2dArm(gym.Env):
 # ==========================================================================================================
     def reset(self, initState = None, seed = None, options = None):
         super().reset(seed=seed)
+        rng = np.random.default_rng(seed=seed)
 
         if initState is not None:
             # Use a pre-defined starting point.
@@ -304,7 +305,7 @@ class hill2dArm(gym.Env):
             self.state = initState
         else:
             # Reset to a random state
-            self.state = np.array([np.random.uniform(0, self.envParams["thetaMax"]), np.random.uniform(-self.envParams["omegaMax"], self.envParams["omegaMax"])], dtype=np.float32)
+            self.state = np.array([rng.uniform(0, self.envParams["thetaMax"]), rng.uniform(-self.envParams["omegaMax"], self.envParams["omegaMax"])], dtype=np.float32)
             self.state[1] = 0
 
         # Restart the step number
