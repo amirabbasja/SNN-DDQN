@@ -262,6 +262,7 @@ class PPO:
             startTimestep = t
             startTimestamp = time.time()
             obs, info = self.env.reset(seed = randomSeed)
+            initialCondition = np.copy(obs)
             
             # Debug info
             if self.debugMode:
@@ -329,6 +330,7 @@ class PPO:
             if self.debugMode:
                 self.lstActions.append({
                     "episode": episodeNumber,
+                    "initialcondition": initialCondition,
                     "seed": randomSeed,
                     "actions": episodeActions  # list of ints
                 })
