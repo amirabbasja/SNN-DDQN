@@ -46,49 +46,31 @@ class hill2dArm(gym.Env):
     via biceps and triceps muscles. Each muscle has a certain activation
     level which results in arm's movement.
     """
-    def __init__(self, initialConditions = None, envParams = None, target = None):
+    def __init__(self, initialConditions, envParams, target, targetOffset):
         super().__init__()
 
         # Define the target
-        if not target:
-            self.target = 100 * deg
-        else:
-            if target < envParams["thetaMin"] or envParams["thetaMax"] < target:
-                raise ValueError(f"Target must be between thetaMin and thetaMax (In Radians). target: {target}, thetaMin: {envParams['thetaMin']}, thetaMax: {envParams['thetaMax']}")
-            
-            self.target = 0
+        if target < envParams["thetaMin"] or envParams["thetaMax"] < target:
+            raise ValueError(f"Target must be between thetaMin and thetaMax (In Radians). target: {target}, thetaMin: {envParams['thetaMin']}, thetaMax: {envParams['thetaMax']}")
+        self.target = target
+
+        # Define the target offset
+        self.targetOffset = targetOffset
 
         # Environemnt params
-        if not envParams:
-            self.envParams = {
-                "thetaMin": 0, 
-                "thetaMax": 135 * deg, 
-                "omegaMin": - np.pi / 3, 
-                "omegaMax": np.pi / 3, 
-                "dt": 0.1, 
-                "forearmInertia": 0.02,
-                "suitableOmegaRange": (-.01 , .01), # Rad/s
-                "suitableThetaRange": (self.target - 5 * deg, self.target  + 5 * deg), # A 5 degree tollerance around the target
-                "activationUnit": 0.01,
-                "maxStepNumber": 1000
-            }
-        else:
-            self.envParams = envParams
+        self.envParams = envParams
         
-        """
-        The action space: 
-        1) biceps activation, 
-        2) triceps activation; 
-        both are between 0 and 1 and independent of eachother
-        """ 
+        # The action space: 
+        # 1) biceps activation, 
+        # 2) triceps activation; 
+        # both are between 0 and 1 and independent of eachother
+
         self.action_space = spaces.Box(low = 0.0, high = 1.0, shape = (5,), dtype = np.float32)
         self.nActionSpace = 5
 
-        """ 
-        The observation space:
-        1) angle, 
-        2) angular velocity
-        """
+        # The observation space:
+        # 1) angle, 
+        # 2) angular velocity
         self.observation_space = spaces.Box(
             low = np.array([np.float32(self.envParams["thetaMin"]), np.float32(self.envParams["omegaMin"])]), 
             high = np.array([np.float32(self.envParams["thetaMax"]), np.float32(self.envParams["omegaMax"])]) , 
