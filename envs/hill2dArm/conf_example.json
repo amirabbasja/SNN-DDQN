@@ -24,6 +24,6 @@
             "maxStepNumber": 1000
         },
         "target": 1.74533,
-        "target_offset": 0.0872665
+        "targetOffset": 0.0872665
     }
 }
