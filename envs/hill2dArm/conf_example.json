@@ -1,0 +1,29 @@
+{
+    "env": "hill2dArm",
+    "env_options": {
+        "initialConditions": [
+            1.57,
+            0.8
+        ],
+        "envParams": {
+            "thetaMin": 0,
+            "thetaMax": 2.35619,
+            "omegaMin": -1.042,
+            "omegaMax": 1.042,
+            "dt": 0.1,
+            "forearmInertia": 0.02,
+            "suitableOmegaRange": [
+                -0.01,
+                0.01
+            ],
+            "suitableThetaRange": [
+                1.65806,
+                1.8326
+            ],
+            "activationUnit": 0.01,
+            "maxStepNumber": 1000
+        },
+        "target": 1.74533,
+        "target_offset": 0.0872665
+    }
+}
