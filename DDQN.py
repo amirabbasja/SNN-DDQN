@@ -464,6 +464,7 @@ class DDQN():
             self.lstHistory.append({
                 "episode": episode,
                 "seed": initialSeed,
+                "initialcondition": initialConditioin,
                 "points": points,
                 "timesteps": t,
                 "duration": time.time() - tempTime,

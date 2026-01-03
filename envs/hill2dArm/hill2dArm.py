@@ -181,6 +181,16 @@ class hill2dArm(gym.Env):
         """
         return np.arctan2(np.sin(current - target), np.cos(current - target))
 
+    """
+    Checks to see weather the agent is in the suitable range
+    """
+    def __checkInRange(self, theta, thetaDot):
+        cond1 = self.envParams["suitableThetaRange"][0] <= theta <= self.envParams["suitableThetaRange"][1]
+        cond2 = self.envParams["suitableOmegaRange"][0] <= thetaDot <= self.envParams["suitableOmegaRange"][1]
+        if(cond1 and cond2):
+            return True
+        return False
+
     def __calcRewards(self):
         # Calculate rewards
         __distreward = self.__distanceReward(self.state[0])
@@ -288,7 +298,11 @@ class hill2dArm(gym.Env):
         else:
             # Reset to a random state
             # self.state = np.array([rng.uniform(0, self.envParams["thetaMax"]), rng.uniform(-self.envParams["omegaMax"], self.envParams["omegaMax"])], dtype=np.float32)
+
+            # If arm is already ina suitable range, make a new random state
             self.state = np.array([rng.uniform(0, self.envParams["thetaMax"]), 0], dtype=np.float32)
+            while self.__checkInRange(self.state[0], self.state[1]):
+                self.state = np.array([rng.uniform(0, self.envParams["thetaMax"]), 0], dtype=np.float32)
 
         # Restart the step number
         self._stepNum = 0

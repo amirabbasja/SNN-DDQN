@@ -309,6 +309,7 @@ class PPO:
             self.lstHistory.append({
                 "episode": episodeNumber,
                 "seed": randomSeed,
+                "initialcondition": initialCondition,
                 "points": sum(episodeRewards),
                 "timesteps": t - startTimestep,
                 "duration": time.time() - startTimestamp,
