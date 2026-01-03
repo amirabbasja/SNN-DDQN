@@ -394,7 +394,7 @@ class DDQN():
             initialSeed = random.randint(1,1_000_000_000) # The random seed that determines the episode's I.C.
             self.state, self.info = self.env.reset(seed = initialSeed)
             points = 0
-            self.lstActions = []
+            episodeActions  = []
             initialConditioin = np.copy(self.state)
 
             tempTime = time.time()
@@ -443,7 +443,7 @@ class DDQN():
                 # Save the necessary data
                 points += reward
                 self.state = observation.copy()
-                self.lstActions.append(action)
+                episodeActions.append(action)
 
                 # Print the training status. Print only once each second to avoid jitters.
                 _lastPrintTime = self._printProgress(
@@ -476,6 +476,7 @@ class DDQN():
                 "nActionInEpisode": _nActionInEpisode,
                 "totalGradientNorms": _gradientNorms if self.debugMode else None,
                 "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
+                "actions": episodeActions,
                 "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
             })
             
@@ -487,7 +488,7 @@ class DDQN():
                     "episode": episode,
                     "initialcondition": initialConditioin,
                     "seed": initialSeed,
-                    "actions": self.lstActions  # list of ints
+                    "actions": episodeActions  # list of ints
                 })
         
             # Saving the current episode's points and time

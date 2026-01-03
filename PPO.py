@@ -321,6 +321,7 @@ class PPO:
                 "nActionInEpisode": _nActionInEpisode,
                 "totalGradientNorms": _gradientNorms if self.debugMode else None,
                 "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
+                "actions": episodeActions,
                 "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
             })
             
