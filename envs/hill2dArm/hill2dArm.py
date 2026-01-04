@@ -652,7 +652,7 @@ class hill2dArm(gym.Env):
         return anim
 
 
-    def createArmAnimation(self, time, theta_results, target, save_filename=None, theta_reward=None, omega_reward=None):
+    def createArmAnimation(self, time, theta_results, omega_results, target, save_filename=None, theta_reward=None, omega_reward=None):
         """
         Create animated visualization of arm movement with optional reward plots
         
@@ -660,6 +660,8 @@ class hill2dArm(gym.Env):
             time : array-like Time array for animation
             theta_results : array-like
                 Angle results for each time step
+            omega_results : array-like
+                Angular velocity results for each time step
             target : float
                 Target angle
             save_filename : str, optional
@@ -683,10 +685,11 @@ class hill2dArm(gym.Env):
             fig = plt.figure(figsize=(8, 10))
             # Use gridspec to control subplot sizes
             # Height ratios: main plot gets 3 units, each reward plot gets 1 unit
-            gs = fig.add_gridspec(3, 1, height_ratios=[5, 1, 1], hspace=0.4)
+            gs = fig.add_gridspec(4, 1, height_ratios=[5, 1, 1, 1], hspace=0.4)
             ax1 = fig.add_subplot(gs[0, 0])
             ax2 = fig.add_subplot(gs[1, 0])
             ax3 = fig.add_subplot(gs[2, 0])
+            ax4 = fig.add_subplot(gs[3, 0])
         else:
             fig = plt.figure(figsize=(6, 6))
             ax1 = plt.subplot(1, 1, 1)
@@ -730,6 +733,16 @@ class hill2dArm(gym.Env):
             ax3.set_title('Omega Reward Progress')
             ax3.grid(True, alpha=0.3)
             omega_progress_line, = ax3.plot([], [], 'r-', linewidth=2)
+            
+            # Omega subplot
+            ax4.plot(time, omega_results, 'g-', linewidth=1, alpha=0.7)
+            ax4.set_xlim(time[0], time[-1])
+            ax4.set_ylim(min(omega_results) * 1.1, max(omega_results) * 1.1)
+            ax4.set_xlabel('Time (s)')
+            ax4.set_ylabel('Omega')
+            ax4.set_title('Omega Progress')
+            ax4.grid(True, alpha=0.3)
+            thetaDot_progress_line, = ax4.plot([], [], 'r-', linewidth=2)
         
         # Animation function
         def animate(frame):
@@ -774,11 +787,13 @@ class hill2dArm(gym.Env):
                 # Update vertical progress lines
                 theta_y_range = ax2.get_ylim()
                 omega_y_range = ax3.get_ylim()
+                theaDot_y_range = ax4.get_ylim()
                 
                 theta_progress_line.set_data([current_time, current_time], theta_y_range)
                 omega_progress_line.set_data([current_time, current_time], omega_y_range)
+                thetaDot_progress_line.set_data([current_time, current_time], theaDot_y_range)
                 
-                animated_objects.extend([theta_progress_line, omega_progress_line])
+                animated_objects.extend([theta_progress_line, omega_progress_line, thetaDot_progress_line])
             
             return animated_objects
         
