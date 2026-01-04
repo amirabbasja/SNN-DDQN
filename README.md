@@ -73,6 +73,7 @@ The scripts support custom environments as well; however, there are couple of po
     * Run with `--onlyupdate` flag to only update the code base and not start training.
     * Add `--monitorinstances` flag when running the file to monitor the instances running in the background.
     * Run with `--onlyshowrunninginstances` flag to only show the instances running in the background and not start training.
+    * Run with `--forcemultipleruns` flag if you want to have multiple instances of run.py running in the background. By default, the app will have only one instance of run.py running in the background.
 
 4. *train.py:* Performs the training process. Shouldn't be ran stand-alone.
 

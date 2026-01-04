@@ -241,8 +241,17 @@ def countRunningInstances():
 # conda install -c conda-forge swig box2d-py
 # pip install "gymnasium[box2d]"
 
-# Before everything, update to the latest codebase
+
 load_dotenv()
+if "--onlyshowrunninginstances" in sys.argv:
+    print(f"Running instances for {os.getenv('session_name')}: {countRunningInstances()}")
+    exit()
+
+if(0 < countRunningInstances() and "--forcemultipleruns" not in sys.argv):
+    print("Another run is already in progress. Terminating this run.")
+    exit()
+
+# Before everything, update to the latest codebase
 if os.getenv("code_base_link") != "." and os.getenv("code_base_link") != None and not "--skipupdate" in sys.argv:
     try:
         print("Updating codebase...")
@@ -267,10 +276,6 @@ forceNewRun = False
 if "--forcenewrun" in sys.argv:
     forceNewRun = True
     sys.argv.remove("--forcenewrun")
-
-if "--onlyshowrunninginstances" in sys.argv:
-    print(f"Running instances for {os.getenv('session_name')}: {countRunningInstances()}")
-    exit()
 
 monitorInstances = False
 if "--monitorinstances" in sys.argv:

@@ -87,8 +87,10 @@ class hill2dArm(gym.Env):
         if not isinstance(initialConditions, np.ndarray):
             if(initialConditions == None):
                 self.state = np.array([0.0, 0.0])
+            else:
+                self.state = np.array(initialConditions)
         else:
-            self.state = initialConditions
+            self.state = np.array(initialConditions)
             
         # Muscle parameters
         self.muscleParams = MuscleParams()
