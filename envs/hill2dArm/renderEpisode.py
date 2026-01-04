@@ -49,6 +49,6 @@ for action in data[i].get("actions"):
     overallRewards.append(_reward)
     time.append(time[-1]+dt)
 print("reward:", sum(overallRewards))
-# environemnt.createArmAnimation(
-#     time, theta, thetaDot, [target, target + targetOffset, target - targetOffset], runLocation + "/save.gif", thetaRewards, omegaRewards
-# )
+environemnt.createArmAnimation(
+    time, theta, thetaDot, [target, target + targetOffset, target - targetOffset], runLocation + "/save.gif", thetaRewards, omegaRewards
+)

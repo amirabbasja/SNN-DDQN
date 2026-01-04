@@ -187,8 +187,10 @@ class hill2dArm(gym.Env):
     Checks to see weather the agent is in the suitable range
     """
     def __checkInRange(self, theta, thetaDot):
-        cond1 = self.envParams["suitableThetaRange"][0] <= theta <= self.envParams["suitableThetaRange"][1]
-        cond2 = self.envParams["suitableOmegaRange"][0] <= thetaDot <= self.envParams["suitableOmegaRange"][1]
+        # Check numpy closeness as well to avoid rounding errors
+        cond1 = (self.envParams["suitableThetaRange"][0] <= theta <= self.envParams["suitableThetaRange"][1]) or np.isclose(self.envParams["suitableThetaRange"][0], theta) or np.isclose(self.envParams["suitableThetaRange"][1], thetaDot)
+        cond2 = (self.envParams["suitableOmegaRange"][0] <= thetaDot <= self.envParams["suitableOmegaRange"][1]) or np.isclose(self.envParams["suitableOmegaRange"][0], thetaDot) or np.isclose(self.envParams["suitableOmegaRange"][1], thetaDot)
+        
         if(cond1 and cond2):
             return True
         return False
@@ -209,8 +211,8 @@ class hill2dArm(gym.Env):
         won = False
 
         # Suitability conditions
-        cond1 = self.envParams["suitableThetaRange"][0] <= self.state[0] <= self.envParams["suitableThetaRange"][1]
-        cond2 = self.envParams["suitableOmegaRange"][0] <= self.state[1] <= self.envParams["suitableOmegaRange"][1]
+        cond1 = (self.envParams["suitableThetaRange"][0] <= self.state[0] <= self.envParams["suitableThetaRange"][1]) or np.isclose(self.envParams["suitableThetaRange"][0], self.state[0]) or np.isclose(self.envParams["suitableThetaRange"][1], self.state[0])
+        cond2 = (self.envParams["suitableOmegaRange"][0] <= self.state[1] <= self.envParams["suitableOmegaRange"][1]) or np.isclose(self.envParams["suitableOmegaRange"][0], self.state[1]) or np.isclose(self.envParams["suitableOmegaRange"][1], self.state[1])
         if cond1 and cond2:
             self._stepsInRange += 1
             __inRangeReward = 1 # Add a small reward for being in suitable range in every step
@@ -226,7 +228,7 @@ class hill2dArm(gym.Env):
             self._stepsInRange = 0
 
         # Termination condition: Forearm out of bounds
-        if not (self.envParams["thetaMin"] < self.state[0] < self.envParams["thetaMax"]):
+        if not (self.envParams["thetaMin"] < self.state[0] < self.envParams["thetaMax"]) or np.isclose(self.envParams["suitableThetaRange"][0], self.state[0]) or np.isclose(self.envParams["suitableThetaRange"][1], self.state[0]):
             __failureReward = -1
             terminated = True
 
@@ -709,8 +711,8 @@ class hill2dArm(gym.Env):
         elbow_point, = ax1.plot([], [], 'ko', markersize=4, label='Elbow')
         wrist_point, = ax1.plot([], [], 'go', markersize=3, label='Wrist')
         target_point, = ax1.plot([], [], 'ro', markersize=1, label='Target')
-        target_line_up, = ax1.plot([], [], ls = '--', color = 'r', linewidth=.7, label='Target')
-        target_line_down, = ax1.plot([], [], ls = '--', color = 'r', linewidth=.7, label='Target')
+        target_line_up, = ax1.plot([], [], ls = '--', color = 'r', linewidth=.7, label='Target offset')
+        target_line_down, = ax1.plot([], [], ls = '--', color = 'r', linewidth=.7, label='Target offset')
         ax1.legend()
         
         # Configure reward subplots if needed
@@ -728,7 +730,6 @@ class hill2dArm(gym.Env):
             ax3.plot(time, omega_reward, 'g-', linewidth=1, alpha=0.7)
             ax3.set_xlim(time[0], time[-1])
             ax3.set_ylim(min(omega_reward) * 1.1, max(omega_reward) * 1.1)
-            ax3.set_xlabel('Time (s)')
             ax3.set_ylabel('Omega Reward')
             ax3.set_title('Omega Reward Progress')
             ax3.grid(True, alpha=0.3)
