@@ -229,7 +229,7 @@ class hill2dArm(gym.Env):
             self._stepsInRange = 0
 
         # Termination condition: Forearm out of bounds
-        if not (self.envParams["thetaMin"] < self.state[0] < self.envParams["thetaMax"]) or np.isclose(self.envParams["suitableThetaRange"][0], self.state[0]) or np.isclose(self.envParams["suitableThetaRange"][1], self.state[0]):
+        if not (self.envParams["thetaMin"] < self.state[0] < self.envParams["thetaMax"]) or np.isclose(self.envParams["thetaMin"], self.state[0]) or np.isclose(self.envParams["thetaMax"], self.state[0]):
             __failureReward = -1
             terminated = True
 
