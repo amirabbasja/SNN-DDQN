@@ -46,7 +46,7 @@ class hill2dArm(gym.Env):
     via biceps and triceps muscles. Each muscle has a certain activation
     level which results in arm's movement.
     """
-    def __init__(self, initialConditions, envParams, target, targetOffset):
+    def __init__(self, initialConditions, rewardWeights, envParams, target, targetOffset):
         super().__init__()
 
         # Define the target
@@ -107,18 +107,19 @@ class hill2dArm(gym.Env):
 
 # PART 03- Gymnasium environmert (reward definitions) ======================================================
 # ==========================================================================================================
-        # Reward weights
-        self.weights = {
-            "shaping": 1,
-            "distance": -.1,
-            "velocity": -.1,
-            "step": 0,
-            "inRange": +1,
-            "termination_success": 50, # Has to be a positive number
-            "termination_failure": 10, # Has to be a positive number
-            "truncation": 0      # Has to be a positive number
-        }
-
+        # Reward weights example:
+        #    {
+        #        "shaping": 1,
+        #        "distance": -.1,
+        #        "velocity": -.1,
+        #        "step": 0,
+        #        "inRange": +1,
+        #        "termination_success": 50, # Has to be a positive number
+        #        "termination_failure": 10, # Has to be a positive number
+        #        "truncation": 0      # Has to be a positive number
+        #    }
+        self.weights = rewardWeights
+        
         # Last episode potential
         self.prevShapingReward = 0
 
