@@ -323,6 +323,7 @@ class PPO:
                 "totalGradientNorms": _gradientNorms if self.debugMode else None,
                 "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
                 "actions": episodeActions,
+                "envSave": self.env.getSave if hasattr(self.env, "getSave") else None,
                 "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
             })
             
@@ -376,8 +377,13 @@ class PPO:
                 
             # Plot the progress
             if (episodeNumber + 1) % 100 == 0 or episodeNumber == 2:
-                # Plot the progress
+                # Plot the progress - General
                 self.plotProgress()
+
+                # Plot the progress - Environment specific
+                if hasattr(self.env, "plotProgress"):
+                    # Extract all envSave values from the lstHistory list
+                    self.env.plotProgress([item["envSave"] for item in self.lstHistory] ,"self.runSavePath")
 
                 # update averages
                 self.avgActorLoss = np.array(self.actorLossMem[-self.avgWindow:]).mean()

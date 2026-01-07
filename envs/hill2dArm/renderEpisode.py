@@ -1,11 +1,11 @@
 import pickle, torch, json, os
-from envs.hill2dArm.hill2dArm import *
+from hill2dArm import *
 
 # Possible options: LundaLander-v3, hill2dArm
 envName = "hill2dArm" 
 
 # Location of the file that we get the data from
-runLocation = "runs_data/21/"
+runLocation = "runs_data/57/"
 
 # Read the environemnt information
 with open(runLocation + "/conf.json") as _c:
@@ -15,31 +15,27 @@ dt = envOptions.get("envParams").get("dt")
 target = envOptions.get("target")
 targetOffset = envOptions.get("targetOffset")
 
-with open(runLocation + "/actions.pkl", "rb") as f:
-    data = pickle.load(f)
-
 if(envName == "hill2dArm"):
     environemnt = hill2dArm(**envOptions)
 
 # Read history from torch files
 _hist = torch.load(next(os.path.join(runLocation, f) for f in os.listdir(runLocation) if f.endswith(".pth")), weights_only = False)
 _hist = _hist.get("train_history")
-i = 0
+i = 4
 hist = _hist[i]
-environemnt.reset(seed=data[i].get("seed"))
+environemnt.reset(seed = hist.get("seed"))
 theta = [np.array(environemnt.state)[0]]
 thetaDot = [np.array(environemnt.state)[0]]
 thetaRewards = [0]
 omegaRewards = [0]
 overallRewards = [0]
 time = [0]
+print("initial condition", hist.get("initialcondition"))
+print("initial condition", environemnt.state)
 print("seed", hist.get("seed"))
-print("seed", data[i].get("seed"))
 print("episode", hist.get("episode"))
-print("episode", data[i].get("episode"))
 print(len(_hist))
-print(len(data))
-for action in data[i].get("actions"):
+for action in hist.get("actions"):
     _state, _reward, _terminated, _truncated, _info = environemnt.step(action)
     theta.append(np.array(environemnt.state)[0])
     thetaDot.append(np.array(environemnt.state)[1])
@@ -48,7 +44,9 @@ for action in data[i].get("actions"):
     omegaRewards.append(_info.get("velocityReward"))
     overallRewards.append(_reward)
     time.append(time[-1]+dt)
-print("reward:", sum(overallRewards))
-environemnt.createArmAnimation(
-    time, theta, thetaDot, [target, target + targetOffset, target - targetOffset], runLocation + "/save.gif", thetaRewards, omegaRewards
-)
+    if _terminated: break
+print("saved reward:",  hist.get("points"))
+print("calculated reward:", sum(overallRewards))
+# environemnt.createArmAnimation(
+#     time, theta, thetaDot, [target, target + targetOffset, target - targetOffset], runLocation + "/save.gif", thetaRewards, omegaRewards
+# )

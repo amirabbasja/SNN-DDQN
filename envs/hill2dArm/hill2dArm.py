@@ -5,7 +5,8 @@ from typing import Tuple, List
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-import math
+import math, os
+import pandas as pd
 from IPython.display import HTML, display
 deg = np.pi / 180
 
@@ -97,6 +98,7 @@ class hill2dArm(gym.Env):
 
         # Define step number
         self._stepNum = 0
+        self.envSave = None
 
         # For storing the step numbers that the agent is in suitable range
         self._stepsInRange = 0
@@ -184,10 +186,10 @@ class hill2dArm(gym.Env):
         """
         return np.arctan2(np.sin(current - target), np.cos(current - target))
 
-    """
-    Checks to see weather the agent is in the suitable range
-    """
     def __checkInRange(self, theta, thetaDot):
+        """
+        Checks to see weather the agent is in the suitable range
+        """
         # Check numpy closeness as well to avoid rounding errors
         cond1 = (self.envParams["suitableThetaRange"][0] <= theta <= self.envParams["suitableThetaRange"][1]) or np.isclose(self.envParams["suitableThetaRange"][0], theta) or np.isclose(self.envParams["suitableThetaRange"][1], thetaDot)
         cond2 = (self.envParams["suitableOmegaRange"][0] <= thetaDot <= self.envParams["suitableOmegaRange"][1]) or np.isclose(self.envParams["suitableOmegaRange"][0], thetaDot) or np.isclose(self.envParams["suitableOmegaRange"][1], thetaDot)
@@ -275,6 +277,9 @@ class hill2dArm(gym.Env):
         self.accumulatedRewards["sum"] += reward # DEBUG
         self.accumulatedRewards["100WinRatio"] = self.endHistory.count(True) / (self.endHistory.count(True) + self.endHistory.count(False) + 1e-6) * 100 # DEBUG
         self.accumulatedRewards["overallWinRatio"] = self.overallWinCount / (self.overallWinCount + self.overallLossCount + 1e-6) * 100 # DEBUG
+        
+        if terminated or truncated:
+            self.envSave = self.accumulatedRewards
 
         return reward, terminated, truncated, won, [__distreward, __velReward, __inRangeReward, __stepReward, self.__shapingReward(), __relativeShapingReward]
 
@@ -313,6 +318,7 @@ class hill2dArm(gym.Env):
         self._stepNum = 0
         self._stepsInRange = 0
         self._episode_reward = 0
+        self.envSave = None
 
         # Restart muscle params
         self.bicepsActivation = 0
@@ -814,3 +820,60 @@ class hill2dArm(gym.Env):
         plt.tight_layout()
         plt.show()
         return fig, anim
+
+    def plotProgress(self, hist, saveLoc):
+        """
+        Plots the training progress
+
+        Args:
+            hist (array): An array of dictionary containing the training history
+            saveLoc (string): The location to save the plot
+        """
+        # Prepare the data
+        histDf = pd.DataFrame(hist)
+        labelNames = [
+            "distance reward", 
+            "velocity reward", 
+            "shaping reward", 
+            "step reward", 
+            "inRange reward", 
+            "success reward", 
+            "failure reward", 
+            "truncation reward", 
+            "sum", 
+            "biceps activation", 
+            "triceps  activation", 
+            "win ratio"
+        ]
+        keys = [
+            "distance",
+            "velocity",
+            "shapingReward",
+            "step",
+            "inRange",
+            "termination_success",
+            "termination_failure",
+            "truncation",
+            "relativeShaping",
+            "sum"
+        ]
+
+        # Plot the performance
+        # Create a figure with 7 subplots arranged vertically
+        fig, axs = plt.subplots(len(keys), 1, figsize=(8, 20), sharex=True)
+
+        # Plot each list in its own subplot
+        for i in range(len(keys)):
+            axs[i].plot(histDf[keys[i]], lw = "0.6", alpha = 1, color = "black")
+            axs[i].set_ylabel(f'{labelNames[i]}')
+            axs[i].set_title(f'{labelNames[i]}')
+
+        # Set common x-label
+        axs[-1].set_xlabel('Index')
+
+        # Adjust layout to prevent overlap
+        plt.tight_layout()
+        plt.savefig(os.path.join(saveLoc,"hill2dArm_training.png"))
+
+        # Close all figures
+        plt.close('all')

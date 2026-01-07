@@ -55,6 +55,10 @@ The scripts support custom environments as well; however, there are couple of po
 
 4. Should have two properties: `nObservationSpace` and `nActionSpace` which are the number of variables in the observation space and number of actions respectively.
 
+5. Optionally, you can add a `plotProgress` function which plots the training progress of the environemnt' this function will be ran periodically, so it is best you implement saving of the figures, etc.
+
+6. If you want to save something at the end of each episode, so you could access it later when training finishes, save it in the `envSave` property of the environemnt.
+
 
 
 ---

@@ -478,6 +478,7 @@ class DDQN():
                 "totalGradientNorms": _gradientNorms if self.debugMode else None,
                 "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
                 "actions": episodeActions,
+                "envSave": self.env.getSave if hasattr(self.env, "getSave") else None,
                 "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
             })
             
@@ -552,7 +553,12 @@ class DDQN():
 
             # Plot the progress
             if (episode + 1) % 100 == 0 or episode == 2:
-                # Plot the details
+                # Plot the progress - Environment specific
+                if hasattr(self.env, "plotProgress"):
+                    # Extract all envSave values from the lstHistory list
+                    self.env.plotProgress([item["envSave"] for item in self.lstHistory] ,"self.runSavePath")
+                
+                # Plot the progress - General
                 histDf = pd.DataFrame(self.lstHistory)
 
                 plotEpisodeReward(histDf, os.path.join(self.runSavePath, f"episode_rewards.png"))
