@@ -827,7 +827,7 @@ class hill2dArm(gym.Env):
 
         Args:
             hist (array): An array of dictionary containing the training history
-            saveLoc (string): The location to save the plot
+            saveLoc (string): The directory to save the plot
         """
         # Prepare the data
         histDf = pd.DataFrame(hist)
