@@ -277,6 +277,7 @@ class hill2dArm(gym.Env):
         self.accumulatedRewards["sum"] += reward # DEBUG
         self.accumulatedRewards["100WinRatio"] = self.endHistory.count(True) / (self.endHistory.count(True) + self.endHistory.count(False) + 1e-6) * 100 # DEBUG
         self.accumulatedRewards["overallWinRatio"] = self.overallWinCount / (self.overallWinCount + self.overallLossCount + 1e-6) * 100 # DEBUG
+        self.accumulatedRewards["stepNumber"] = self._stepNum
         
         if terminated or truncated:
             self.envSave = self.accumulatedRewards
@@ -661,12 +662,18 @@ class hill2dArm(gym.Env):
         return anim
 
 
-    def createArmAnimation(self, time, theta_results, omega_results, target, save_filename=None, theta_reward=None, omega_reward=None):
+    def createArmAnimation(self, time, theta_results, omega_results, target, save_filename=None, theta_reward=None, omega_reward=None, data_df=None):
         """
-        Create animated visualization of arm movement with optional reward plots
-        
+        Create animated visualization of arm movement.
+
+        Optionally, plot extra time-series data (one subplot per DataFrame column)
+        stacked vertically on the right side of the main animation. All right-side
+        subplots share the same x-axis (time) and include a moving vertical line
+        indicating the current animation time.
+
         Args:
-            time : array-like Time array for animation
+            time : array-like
+                Time array for animation
             theta_results : array-like
                 Angle results for each time step
             omega_results : array-like
@@ -675,22 +682,32 @@ class hill2dArm(gym.Env):
                 Target angle
             save_filename : str, optional
                 Filename to save animation (e.g., 'arm_animation.mp4')
-                If None, animation is not saved
             theta_reward : array-like, optional
                 Theta reward values for each time step
             omega_reward : array-like, optional
                 Omega reward values for each time step
+            data_df : pandas.DataFrame, optional
+                Each column is plotted as a separate right-side subplot.
         """
         # Get necessary constants
         params = MuscleParams()
 
         deg = np.pi / 180
-        
-        # Determine if reward plots should be shown
-        show_rewards = theta_reward is not None and omega_reward is not None
-        
+
+        show_series = isinstance(data_df, pd.DataFrame) and len(data_df.columns) > 0
+        show_rewards = (not show_series) and theta_reward is not None and omega_reward is not None
+
+        axes_right = []
+        progress_lines = []
+
         # Set up the figure and subplots
-        if show_rewards:
+        if show_series:
+            n_series = len(data_df.columns)
+            fig = plt.figure(figsize=(15, max(6, 1.6 * n_series)))
+            gs = fig.add_gridspec(1, 2, width_ratios=[2.0, 3.0], wspace=0.35)
+            ax1 = fig.add_subplot(gs[0, 0])
+            gs_right = gs[0, 1].subgridspec(n_series, 1, hspace=0.5)
+        elif show_rewards:
             fig = plt.figure(figsize=(8, 10))
             # Use gridspec to control subplot sizes
             # Height ratios: main plot gets 3 units, each reward plot gets 1 unit
@@ -722,6 +739,37 @@ class hill2dArm(gym.Env):
         target_line_down, = ax1.plot([], [], ls = '--', color = 'r', linewidth=.7, label='Target offset')
         ax1.legend()
         
+        # Configure right-side DataFrame subplots if provided
+        if show_series:
+            for i, col in enumerate(list(data_df.columns)):
+                ax = fig.add_subplot(gs_right[i, 0], sharex=axes_right[0] if axes_right else None)
+
+                y = data_df[col].to_numpy()
+                ax.plot(time, y, linewidth=1, alpha=0.7)
+                ax.set_xlim(time[0], time[-1])
+
+                y_min = np.nanmin(y)
+                y_max = np.nanmax(y)
+                if not np.isfinite(y_min) or not np.isfinite(y_max):
+                    y_min, y_max = -1.0, 1.0
+                if y_max == y_min:
+                    pad = max(1e-6, abs(y_max) * 0.1)
+                else:
+                    pad = 0.1 * (y_max - y_min)
+                ax.set_ylim(y_min - pad, y_max + pad)
+
+                ax.set_title(str(col))
+                ax.grid(True, alpha=0.3)
+
+                vline, = ax.plot([], [], 'r-', linewidth=1)
+                axes_right.append(ax)
+                progress_lines.append(vline)
+
+            if axes_right:
+                axes_right[-1].set_xlabel('Time (s)')
+                for ax in axes_right[:-1]:
+                    ax.tick_params(labelbottom=False)
+
         # Configure reward subplots if needed
         if show_rewards:
             # Theta reward subplot
@@ -791,6 +839,12 @@ class hill2dArm(gym.Env):
             # Update reward progress lines if rewards are provided
             animated_objects = [upper_arm_line, forearm_line, bicepsLine, tricepsLine, target_line_up, target_line_down, elbow_point, wrist_point, target_point]
             
+            if show_series:
+                for ax, vline in zip(axes_right, progress_lines):
+                    y_range = ax.get_ylim()
+                    vline.set_data([current_time, current_time], y_range)
+                animated_objects.extend(progress_lines)
+
             if show_rewards:
                 # Update vertical progress lines
                 theta_y_range = ax2.get_ylim()
@@ -840,10 +894,9 @@ class hill2dArm(gym.Env):
             "success reward", 
             "failure reward", 
             "truncation reward", 
-            "sum", 
-            "biceps activation", 
-            "triceps  activation", 
-            "win ratio"
+            "relative shaping reward",
+            "sum",
+            "step count"
         ]
         keys = [
             "distance",
@@ -855,7 +908,8 @@ class hill2dArm(gym.Env):
             "termination_failure",
             "truncation",
             "relativeShaping",
-            "sum"
+            "sum",
+            "stepNumber"
         ]
 
         # Plot the performance
@@ -864,7 +918,12 @@ class hill2dArm(gym.Env):
 
         # Plot each list in its own subplot
         for i in range(len(keys)):
-            axs[i].plot(histDf[keys[i]], lw = "0.6", alpha = 1, color = "black")
+            axs[i].scatter(histDf.index, histDf[keys[i]], 
+                        s=2,                  # small marker size for a light appearance
+                        color="black", 
+                        alpha=1, 
+                        marker='o',           # explicit circle marker (default, but clear)
+                        linewidth=0)          # no edge lines on markers if unwanted
             axs[i].set_ylabel(f'{labelNames[i]}')
             axs[i].set_title(f'{labelNames[i]}')
 

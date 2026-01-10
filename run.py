@@ -192,16 +192,19 @@ def isValidPath(string):
         return False
 
 def sendTelegramMessage(bot_token, chat_id, message):
-    
-    """Send a message to a Telegram user/chat"""
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        'chat_id': chat_id,
-        'text': message
-    }
-    response = requests.post(url, data=payload)
-    return response.json()
-
+    try:
+        if bot_token and chat_id:
+            """Send a message to a Telegram user/chat"""
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            payload = {
+                'chat_id': chat_id,
+                'text': message
+            }
+            response = requests.post(url, data=payload)
+            return response.json()
+        else: return None
+    except:
+        print("ERROR: Couldn't send telegram message")
 def countRunningInstances():
     try:
         if os.name == 'nt': # windows

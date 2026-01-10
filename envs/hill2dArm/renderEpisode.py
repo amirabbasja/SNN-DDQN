@@ -5,7 +5,7 @@ from hill2dArm import *
 envName = "hill2dArm" 
 
 # Location of the file that we get the data from
-runLocation = "runs_data/57/"
+runLocation = "runs_data/1/"
 
 # Read the environemnt information
 with open(runLocation + "/conf.json") as _c:
@@ -21,9 +21,11 @@ if(envName == "hill2dArm"):
 # Read history from torch files
 _hist = torch.load(next(os.path.join(runLocation, f) for f in os.listdir(runLocation) if f.endswith(".pth")), weights_only = False)
 _hist = _hist.get("train_history")
-i = 4
+i = 1
 hist = _hist[i]
+stepData = []
 environemnt.reset(seed = hist.get("seed"))
+stepData.append(dict(environemnt.accumulatedRewards))
 theta = [np.array(environemnt.state)[0]]
 thetaDot = [np.array(environemnt.state)[0]]
 thetaRewards = [0]
@@ -39,6 +41,7 @@ for action in hist.get("actions"):
     _state, _reward, _terminated, _truncated, _info = environemnt.step(action)
     theta.append(np.array(environemnt.state)[0])
     thetaDot.append(np.array(environemnt.state)[1])
+    stepData.append(dict(environemnt.accumulatedRewards))
 
     thetaRewards.append(_info.get("distanceReward"))
     omegaRewards.append(_info.get("velocityReward"))
@@ -47,6 +50,8 @@ for action in hist.get("actions"):
     if _terminated: break
 print("saved reward:",  hist.get("points"))
 print("calculated reward:", sum(overallRewards))
-# environemnt.createArmAnimation(
-#     time, theta, thetaDot, [target, target + targetOffset, target - targetOffset], runLocation + "/save.gif", thetaRewards, omegaRewards
-# )
+dataDf = pd.DataFrame(stepData)
+print(dataDf)
+environemnt.createArmAnimation(
+    time, theta, thetaDot, [target, target + targetOffset, target - targetOffset], runLocation + "/save.gif", thetaRewards, omegaRewards, dataDf
+)
