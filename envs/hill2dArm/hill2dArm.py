@@ -127,16 +127,34 @@ class hill2dArm(gym.Env):
 
         # DEBUG params
         self.accumulatedRewards = {
-            "distance": 0,
-            "velocity": 0,
+            "accumulatedDistanceReward": self.__distanceReward(self.state[0]) * self.weights["distance"],
+            "accumulatedVelocityReward": self.__velocityReward(self.state[1]) * self.weights["velocity"],
+            "accumulatedShapingReward": 0,
+            "accumulatedStep": 0,
+            "accumulatedInRangeReward": 0,
+            "accumulatedInRangeReward_theta": 0,
+            "accumulatedInRangeReward_thetaDot": 0,
+            "accumulatedTerminationReward_success": 0,
+            "accumulatedTerminationReward_failure": 0,
+            "accumulatedRelativeShapingReward": 0,
+            "accumulatedTruncationReward": 0,
+            "accumulatedRewardSum": 0
+        }
+        self.stepWiseParams = {
+            "distanceReward": self.__distanceReward(self.state[0]) * self.weights["distance"],
+            "velocityReward": self.__velocityReward(self.state[1]) * self.weights["velocity"],
             "shapingReward": 0,
-            "step": 0,
-            "inRange": 0,
-            "termination_success": 0,
-            "termination_failure": 0,
-            "relativeShaping": 0,
-            "truncation": 0,
-            "sum": 0
+            "inRangeReward": 0,
+            "inRangeReward_theta": 0,
+            "inRangeReward_thetaDot": 0,
+            "terminationReward_success": 0,
+            "terminationReward_failure": 0,
+            "relativeShapingReward": 0,
+            "truncationReward": 0,
+            "rewardSum": 0,
+            "100WinRatio": 0,
+            "overallWinRatio": 0,
+            "stepNumber": 0
         }
         self.endHistory = [] # DEBUG - True for success, False for failure
         self.overallWinCount = 0 # DEBUG
@@ -204,6 +222,8 @@ class hill2dArm(gym.Env):
         __velReward = self.__velocityReward(self.state[1])
         __stepReward = 1
         __inRangeReward = 0
+        __inRangeThetaReward = 0
+        __inRangeThetaDotReward = 0
         __successReward = 0
         __failureReward = 0
         __truncationReward = 0
@@ -216,6 +236,13 @@ class hill2dArm(gym.Env):
         # Suitability conditions
         cond1 = (self.envParams["suitableThetaRange"][0] <= self.state[0] <= self.envParams["suitableThetaRange"][1]) or np.isclose(self.envParams["suitableThetaRange"][0], self.state[0]) or np.isclose(self.envParams["suitableThetaRange"][1], self.state[0])
         cond2 = (self.envParams["suitableOmegaRange"][0] <= self.state[1] <= self.envParams["suitableOmegaRange"][1]) or np.isclose(self.envParams["suitableOmegaRange"][0], self.state[1]) or np.isclose(self.envParams["suitableOmegaRange"][1], self.state[1])
+
+        if cond1:
+            __inRangeThetaReward = 1
+
+        if cond2:
+            __inRangeThetaDotReward = 1
+
         if cond1 and cond2:
             self._stepsInRange += 1
             __inRangeReward = 1 # Add a small reward for being in suitable range in every step
@@ -252,6 +279,8 @@ class hill2dArm(gym.Env):
         __velReward = self.weights["velocity"] * __velReward
         __stepReward = self.weights["step"] * __stepReward
         __inRangeReward = self.weights["inRange"] * __inRangeReward
+        __inRangeThetaReward = self.weights["inRangeTheta"] * __inRangeThetaReward
+        __inRangeThetaDotReward = self.weights["inRangeThetaDot"] * __inRangeThetaDotReward
         __successReward = self.weights["termination_success"] * __successReward
         __failureReward = self.weights["termination_failure"] * __failureReward
         __truncationReward = self.weights["truncation"] * __truncationReward
@@ -259,30 +288,47 @@ class hill2dArm(gym.Env):
         # Subtract the reward of previous step to avoid rewarding the same progress multiple times
         __relativeShapingReward = self.__shapingReward() * self.weights["shaping"] - self.prevShapingReward 
         
-        reward = self.__shapingReward() + __stepReward + __inRangeReward + __successReward + __failureReward + __truncationReward
+        reward = __relativeShapingReward + __stepReward + __inRangeReward + __inRangeThetaReward + __inRangeThetaDotReward + __successReward + __failureReward + __truncationReward
+        print("\nrelative shaping reward", __relativeShapingReward, "\nstep reward", __stepReward, "\nin range reward", __inRangeReward, "\nTheta in range reward", __inRangeThetaReward, "\nTheta dot in range reward", __inRangeThetaDotReward, "\nsccess reward", __successReward, "\nfailure reward", __failureReward, "\ntruncation reward", __truncationReward)
+        print("===================")
 
         # Update the shaping reward
         self.prevShapingReward = self.__shapingReward()
 
         # DEBUG
-        self.accumulatedRewards["distance"] += __distreward # DEBUG
-        self.accumulatedRewards["velocity"] += __velReward # DEBUG
-        self.accumulatedRewards["shapingReward"] += __relativeShapingReward # DEBUG
-        self.accumulatedRewards["step"] += __stepReward # DEBUG
-        self.accumulatedRewards["inRange"] += __inRangeReward # DEBUG
-        self.accumulatedRewards["termination_success"] += __successReward # DEBUG
-        self.accumulatedRewards["termination_failure"] += __failureReward # DEBUG
-        self.accumulatedRewards["truncation"] += __truncationReward # DEBUG
-        self.accumulatedRewards["relativeShaping"] += __relativeShapingReward # DEBUG
-        self.accumulatedRewards["sum"] += reward # DEBUG
-        self.accumulatedRewards["100WinRatio"] = self.endHistory.count(True) / (self.endHistory.count(True) + self.endHistory.count(False) + 1e-6) * 100 # DEBUG
-        self.accumulatedRewards["overallWinRatio"] = self.overallWinCount / (self.overallWinCount + self.overallLossCount + 1e-6) * 100 # DEBUG
-        self.accumulatedRewards["stepNumber"] = self._stepNum
+        self.accumulatedRewards["accumulatedDistanceReward"] += __distreward # DEBUG
+        self.accumulatedRewards["accumulatedVelocityReward"] += __velReward # DEBUG
+        self.accumulatedRewards["accumulatedShapingReward"] += self.__shapingReward() # DEBUG
+        self.accumulatedRewards["accumulatedStep"] += __stepReward # DEBUG
+        self.accumulatedRewards["accumulatedInRangeReward"] += __inRangeReward # DEBUG
+        self.accumulatedRewards["accumulatedInRangeReward_theta"] += __inRangeThetaReward # DEBUG
+        self.accumulatedRewards["accumulatedInRangeReward_thetaDot"] += __inRangeThetaDotReward # DEBUG
+        self.accumulatedRewards["accumulatedTerminationReward_success"] += __successReward # DEBUG
+        self.accumulatedRewards["accumulatedTerminationReward_failure"] += __failureReward # DEBUG
+        self.accumulatedRewards["accumulatedTruncationReward"] += __truncationReward # DEBUG
+        self.accumulatedRewards["accumulatedRelativeShapingReward"] += __relativeShapingReward # DEBUG
+        self.accumulatedRewards["accumulatedRewardSum"] += reward # DEBUG
+
+        # DEBUG
+        self.stepWiseParams["distanceReward"] = __distreward # DEBUG
+        self.stepWiseParams["velocityReward"] = __velReward # DEBUG
+        self.stepWiseParams["shapingReward"] = self.__shapingReward() # DEBUG
+        self.stepWiseParams["inRangeReward"] = __inRangeReward # DEBUG
+        self.stepWiseParams["inRangeReward_theta"] = __inRangeThetaReward # DEBUG
+        self.stepWiseParams["inRangeReward_thetaDot"] = __inRangeThetaDotReward # DEBUG
+        self.stepWiseParams["terminationReward_success"] = __successReward # DEBUG
+        self.stepWiseParams["terminationReward_failure"] = __failureReward # DEBUG
+        self.stepWiseParams["relativeShapingReward"] = __relativeShapingReward # DEBUG
+        self.stepWiseParams["truncationReward"] = __truncationReward # DEBUG
+        self.stepWiseParams["rewardSum"] = reward # DEBUG
+        self.stepWiseParams["100WinRatio"] = self.endHistory.count(True) / (self.endHistory.count(True) + self.endHistory.count(False) + 1e-6) * 100 # DEBUG
+        self.stepWiseParams["overallWinRatio"] = self.overallWinCount / (self.overallWinCount + self.overallLossCount + 1e-6) * 100 # DEBUG
+        self.stepWiseParams["stepNumber"] = self._stepNum
         
         if terminated or truncated:
             self.envSave = self.accumulatedRewards
 
-        return reward, terminated, truncated, won, [__distreward, __velReward, __inRangeReward, __stepReward, self.__shapingReward(), __relativeShapingReward]
+        return reward, terminated, truncated, won, [__distreward, __velReward, __inRangeReward, __inRangeThetaReward, __inRangeThetaDotReward, __stepReward, self.__shapingReward(), __relativeShapingReward]
 
     def __shapingReward(self):
         """
@@ -330,16 +376,34 @@ class hill2dArm(gym.Env):
 
         # DEBUG params
         self.accumulatedRewards = {
-            "distance": 0,
-            "velocity": 0,
+            "accumulatedDistanceReward": self.__distanceReward(self.state[0]) * self.weights["distance"],
+            "accumulatedVelocityReward": self.__velocityReward(self.state[1]) * self.weights["velocity"],
+            "accumulatedShapingReward": 0,
+            "accumulatedStep": 0,
+            "accumulatedInRangeReward": 0,
+            "accumulatedInRangeReward_theta": 0,
+            "accumulatedInRangeReward_thetaDot": 0,
+            "accumulatedTerminationReward_success": 0,
+            "accumulatedTerminationReward_failure": 0,
+            "accumulatedRelativeShapingReward": 0,
+            "accumulatedTruncationReward": 0,
+            "accumulatedRewardSum": 0
+        }
+        self.stepWiseParams = {
+            "distanceReward": self.__distanceReward(self.state[0]) * self.weights["distance"],
+            "velocityReward": self.__velocityReward(self.state[1]) * self.weights["velocity"],
             "shapingReward": 0,
-            "step": 0,
-            "inRange": 0,
-            "termination_success": 0,
-            "termination_failure": 0,
-            "truncation": 0,
-            "relativeShaping": 0,
-            "sum": 0
+            "inRangeReward": 0,
+            "inRangeReward_theta": 0,
+            "inRangeReward_thetaDot": 0,
+            "terminationReward_success": 0,
+            "terminationReward_failure": 0,
+            "relativeShapingReward": 0,
+            "truncationReward": 0,
+            "rewardSum": 0,
+            "100WinRatio": 0,
+            "overallWinRatio": 0,
+            "stepNumber": 0
         }
         self.action_history = [0 for i in range(5)]  # DEBUG
 
@@ -428,9 +492,11 @@ class hill2dArm(gym.Env):
             "distanceReward": lstRewards[0], 
             "velocityReward": lstRewards[1], 
             "inRangeReward": lstRewards[2], 
-            "stepReward": lstRewards[3], 
-            "shapingReward": lstRewards[4],
-            "relativeShapingReward": lstRewards[5],
+            "inRangeThetaReward": lstRewards[3], 
+            "inRangeThetaDotReward": lstRewards[4], 
+            "stepReward": lstRewards[5], 
+            "shapingReward": lstRewards[6],
+            "relativeShapingReward": lstRewards[7],
             "stepNum": self._stepNum,
             "bicepsForce": bicepsForce,
             "tricepsForce": tricepsForce,
@@ -704,9 +770,9 @@ class hill2dArm(gym.Env):
         if show_series:
             n_series = len(data_df.columns)
             fig = plt.figure(figsize=(15, max(6, 1.6 * n_series)))
-            gs = fig.add_gridspec(1, 2, width_ratios=[2.0, 3.0], wspace=0.35)
+            gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 3.0], wspace=0.35)
             ax1 = fig.add_subplot(gs[0, 0])
-            gs_right = gs[0, 1].subgridspec(n_series, 1, hspace=0.5)
+            gs_right = gs[0, 1].subgridspec(int(np.ceil(n_series/3)),3, hspace=0.5)
         elif show_rewards:
             fig = plt.figure(figsize=(8, 10))
             # Use gridspec to control subplot sizes
@@ -742,7 +808,7 @@ class hill2dArm(gym.Env):
         # Configure right-side DataFrame subplots if provided
         if show_series:
             for i, col in enumerate(list(data_df.columns)):
-                ax = fig.add_subplot(gs_right[i, 0], sharex=axes_right[0] if axes_right else None)
+                ax = fig.add_subplot(gs_right[int(i/3), i%3], sharex=axes_right[0] if axes_right else None)
 
                 y = data_df[col].to_numpy()
                 ax.plot(time, y, linewidth=1, alpha=0.7)
@@ -750,6 +816,16 @@ class hill2dArm(gym.Env):
 
                 y_min = np.nanmin(y)
                 y_max = np.nanmax(y)
+
+                if (str(col)) == "theta":
+                    ax.hlines([self.envParams["suitableThetaRange"][0], self.envParams["suitableThetaRange"][1]], np.min(time), np.max(time), colors="red", )
+                    y_min = np.min([y_min, self.envParams["suitableThetaRange"][0]])
+                    y_max = np.max([y_max, self.envParams["suitableThetaRange"][1]])
+                elif (str(col)) == "thetaDot":
+                    ax.hlines([self.envParams["suitableOmegaRange"][0], self.envParams["suitableOmegaRange"][1]], np.min(time), np.max(time), colors="red", )
+                    y_min = np.min([y_min, self.envParams["suitableOmegaRange"][0]])
+                    y_max = np.max([y_max, self.envParams["suitableOmegaRange"][1]])
+
                 if not np.isfinite(y_min) or not np.isfinite(y_max):
                     y_min, y_max = -1.0, 1.0
                 if y_max == y_min:
@@ -890,7 +966,9 @@ class hill2dArm(gym.Env):
             "velocity reward", 
             "shaping reward", 
             "step reward", 
-            "inRange reward", 
+            "inRange reward",
+            "inRange theta reward",
+            "inRange thetaDot reward", 
             "success reward", 
             "failure reward", 
             "truncation reward", 
@@ -904,6 +982,8 @@ class hill2dArm(gym.Env):
             "shapingReward",
             "step",
             "inRange",
+            "inRangeTheta",
+            "inRangeThetaDot",
             "termination_success",
             "termination_failure",
             "truncation",
