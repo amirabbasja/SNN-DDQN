@@ -5,7 +5,7 @@ from hill2dArm import *
 envName = "hill2dArm" 
 
 # Location of the file that we get the data from
-runLocation = "runs_data/2/"
+runLocation = "runs_data/3/"
 
 # Read the environemnt information
 with open(runLocation + "/conf.json") as _c:
@@ -21,7 +21,7 @@ if(envName == "hill2dArm"):
 # Read history from torch files
 _hist = torch.load(next(os.path.join(runLocation, f) for f in os.listdir(runLocation) if f.endswith(".pth")), weights_only = False)
 _hist = _hist.get("train_history")
-i = 2
+i = 1000
 hist = _hist[i]
 stepData = []
 environemnt.reset(seed = hist.get("seed"))
@@ -67,7 +67,7 @@ for action in hist.get("actions"):
     time.append(time[-1]+dt)
     if _terminated: break
     counter += 1
-    if counter == 20: break
+    # if counter == 20: break
 
 print("saved reward:",  hist.get("points"))
 print("calculated reward:", sum(overallRewards))
@@ -76,7 +76,7 @@ dataDf = pd.DataFrame(stepData)
 print("Availible columns to plot")
 pprint.pprint(dataDf.columns.tolist())
 
-colsToPlot = ["distanceReward","accumulatedDistanceReward", "rewardSum", "accumulatedRewardSum"]
+colsToPlot = ["distanceReward","accumulatedDistanceReward", "rewardSum", "accumulatedRewardSum", "accumulatedStep"]
 dataDf = dataDf[colsToPlot]
 
 # dataDf = dataDf.drop(["100WinRatio", "overallWinRatio"], axis = 1)

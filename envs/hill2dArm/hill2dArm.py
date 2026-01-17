@@ -42,10 +42,18 @@ class MuscleParams:
 # ==========================================================================================================
 class hill2dArm(gym.Env):
     """
+    --V2--
+
     Makes a gymnasium environment for a simple human forearm movement.
     The upper arm is taken to be fixed and the forearm is controlled 
     via biceps and triceps muscles. Each muscle has a certain activation
-    level which results in arm's movement.
+    level which results in arm's movement. By default, the target for 
+    angular velocity is 0 rad/s
+
+    Version change log:
+    v3: Add angular velocity to the target as well TODO
+    v2: Now when taking a step, or resetting, it returns the relative state (to the targets) instead of the state itself
+    v1: The initial version
     """
     def __init__(self, initialConditions, rewardWeights, envParams, target, targetOffset):
         super().__init__()
@@ -53,6 +61,8 @@ class hill2dArm(gym.Env):
         # Define the target
         if target < envParams["thetaMin"] or envParams["thetaMax"] < target:
             raise ValueError(f"Target must be between thetaMin and thetaMax (In Radians). target: {target}, thetaMin: {envParams['thetaMin']}, thetaMax: {envParams['thetaMax']}")
+        if envParams["thetaMax"] <= envParams["thetaMin"]:
+            raise ValueError(f"Theta max should be higher than theta min. You entered thetaMin: {envParams['thetaMin']}, thetaMax: {envParams['thetaMax']}")
         self.target = target
 
         # Define the target offset
@@ -60,29 +70,31 @@ class hill2dArm(gym.Env):
 
         # Environemnt params
         self.envParams = envParams
-        
+
         # The action space: 
         # 1) biceps activation, 
         # 2) triceps activation; 
         # both are between 0 and 1 and independent of eachother
-
         self.action_space = spaces.Box(low = 0.0, high = 1.0, shape = (5,), dtype = np.float32)
         self.nActionSpace = 5
+        
+        # Set target velocity
+        self.targetVelocity = 0
 
         # The observation space:
-        # 1) angle, 
-        # 2) angular velocity
+        # 1) angular difference from target angle, 
+        # 2) angular velocity difference from target angular velocity
         self.observation_space = spaces.Box(
-            low = np.array([np.float32(self.envParams["thetaMin"]), np.float32(self.envParams["omegaMin"])]), 
-            high = np.array([np.float32(self.envParams["thetaMax"]), np.float32(self.envParams["omegaMax"])]) , 
+            low = np.array([np.float32(self.envParams["thetaMin"] - self.target), np.float32(self.envParams["omegaMin"] - self.targetVelocity)]), 
+            high = np.array([np.float32(self.envParams["thetaMax"] - self.target), np.float32(self.envParams["omegaMax"] - self.targetVelocity)]) , 
             shape = (2,), 
             dtype = np.float32
         )
         self.nObservationSpace = (2,)
 
-        # Used for normalizing the rewards
-        self._thetaRange = abs(self.envParams["thetaMax"] - self.envParams["thetaMin"])
-        self._omegaRange = abs(self.envParams["omegaMax"] - self.envParams["omegaMin"])
+        # Used for normalizing the rewards, the ranges consist of the max/min of the acceptable range to the target
+        self._thetaRange = [abs(self.envParams["thetaMin"] - self.target), abs(self.envParams["thetaMax"] - self.target)]
+        self._omegaRange = [abs(self.envParams["omegaMin"] - self.targetVelocity), abs(self.envParams["omegaMax"] - self.targetVelocity)]
 
         # Initialize the state
         if not isinstance(initialConditions, np.ndarray):
@@ -109,17 +121,6 @@ class hill2dArm(gym.Env):
 
 # PART 03- Gymnasium environmert (reward definitions) ======================================================
 # ==========================================================================================================
-        # Reward weights example:
-        #    {
-        #        "shaping": 1,
-        #        "distance": -.1,
-        #        "velocity": -.1,
-        #        "step": 0,
-        #        "inRange": +1,
-        #        "termination_success": 50, # Has to be a positive number
-        #        "termination_failure": 10, # Has to be a positive number
-        #        "truncation": 0      # Has to be a positive number
-        #    }
         self.weights = rewardWeights
         
         # Last episode potential
@@ -161,27 +162,20 @@ class hill2dArm(gym.Env):
         self.overallLossCount = 0 # DEBUG
         self.action_history = [0 for i in range(5)]  # DEBUG
 
-    def __velocityReward(self, xDot):
-        # m = np.pi/4  # Mean (peak at xDot = m)
-        # sigma = 0.25 * m  # Standard deviation to make f(0) and f(2m) close to 0
+    def __velocityReward(self, relativeThetaDot):
+        """
+        Args:
+            relativeThetaDot (float): The relative thetaDot from target thetaDot 
+        """
+        err = relativeThetaDot / self._omegaRange[0 if relativeThetaDot < self.targetVelocity else 1] # Normalize Omega
+        return np.power(err,2)
 
-        # xDot = np.abs(xDot)
-        # y = np.zeros_like(xDot)
-        # smaller = xDot < m
-        # bigger = xDot >= m
-
-        # y[smaller] = np.exp(-((xDot[smaller] - m) ** 2) / (2 * sigma ** 2))
-        # y[bigger] = np.exp(-((xDot[bigger] - m) ** 2) / (2 * sigma ** 2)) *2 - 1
-
-        xDot = xDot / self._omegaRange # Normalize Omega
-        return np.power(xDot,2)
-
-    def __distanceReward(self, x):
-        # l1  = .22
-        # l2 = 1
-        # y = (1 / np.exp(np.power(x,2)/l1)/l2)
-
-        err = self.__angular_error(x, self.target) / self._thetaRange # Normalize theta
+    def __distanceReward(self, relativeTheta):
+        """
+        Args:
+            relativeTheta (float): The relative theta from target theta 
+        """
+        err = relativeTheta / self._thetaRange[0 if relativeTheta < self.target else 1] # Normalize theta
         return np.power(err,2)
 
     def __angular_error(self, current: np.float32, target: np.float32) -> np.float32:
@@ -215,6 +209,16 @@ class hill2dArm(gym.Env):
         if(cond1 and cond2):
             return True
         return False
+    
+    def getActualState(self, relativeState = None):
+        """
+        Returns the actual state of the agent.
+        """
+
+        if not relativeState:
+            return self.state
+        
+        return (self.target + relativeState[0], self.targetVelocity + relativeState[1])
 
     def __calcRewards(self):
         # Calculate rewards
@@ -287,10 +291,9 @@ class hill2dArm(gym.Env):
 
         # Subtract the reward of previous step to avoid rewarding the same progress multiple times
         __relativeShapingReward = self.__shapingReward() * self.weights["shaping"] - self.prevShapingReward 
-        
         reward = __relativeShapingReward + __stepReward + __inRangeReward + __inRangeThetaReward + __inRangeThetaDotReward + __successReward + __failureReward + __truncationReward
-        print("\nrelative shaping reward", __relativeShapingReward, "\nstep reward", __stepReward, "\nin range reward", __inRangeReward, "\nTheta in range reward", __inRangeThetaReward, "\nTheta dot in range reward", __inRangeThetaDotReward, "\nsccess reward", __successReward, "\nfailure reward", __failureReward, "\ntruncation reward", __truncationReward)
-        print("===================")
+        # print("\nrelative shaping reward", __relativeShapingReward, "\nstep reward", __stepReward, "\nin range reward", __inRangeReward, "\nTheta in range reward", __inRangeThetaReward, "\nTheta dot in range reward", __inRangeThetaDotReward, "\nsccess reward", __successReward, "\nfailure reward", __failureReward, "\ntruncation reward", __truncationReward)
+        # print("===================")
 
         # Update the shaping reward
         self.prevShapingReward = self.__shapingReward()
@@ -308,6 +311,7 @@ class hill2dArm(gym.Env):
         self.accumulatedRewards["accumulatedTruncationReward"] += __truncationReward # DEBUG
         self.accumulatedRewards["accumulatedRelativeShapingReward"] += __relativeShapingReward # DEBUG
         self.accumulatedRewards["accumulatedRewardSum"] += reward # DEBUG
+        self.accumulatedRewards["stepNumber"] = self._stepNum # DEBUG
 
         # DEBUG
         self.stepWiseParams["distanceReward"] = __distreward # DEBUG
@@ -411,7 +415,7 @@ class hill2dArm(gym.Env):
         if 200 < len(self.endHistory): 
             self.endHistory.pop(0)
         
-        return self.state, {}
+        return np.array([self.state[0]-self.target, self.state[1]-self.targetVelocity]), {}
 
 # PART 04- Gymnasium environmert (step) ====================================================================
 # ==========================================================================================================
@@ -482,6 +486,9 @@ class hill2dArm(gym.Env):
         # Impose boundary rules for angle (theta)
         self.state[0] = np.clip(self.state[0], self.envParams["thetaMin"], self.envParams["thetaMax"])
 
+        # Get relative states
+        self.relativeState = np.array([self.state[0] - self.target,  self.state[1]- self.targetVelocity])
+
         # Increase step number
         self._stepNum += 1
 
@@ -507,7 +514,7 @@ class hill2dArm(gym.Env):
             } # DEBUG
         self.action_history[action] = self.action_history[action] + 1  # DEBUG
 
-        return self.state, reward, terminated, truncated, info
+        return np.array([self.state[0]-self.target, self.state[1]-self.targetVelocity]), reward, terminated, truncated, info
 
     def render(self):
         pass
@@ -977,18 +984,18 @@ class hill2dArm(gym.Env):
             "step count"
         ]
         keys = [
-            "distance",
-            "velocity",
-            "shapingReward",
-            "step",
-            "inRange",
-            "inRangeTheta",
-            "inRangeThetaDot",
-            "termination_success",
-            "termination_failure",
-            "truncation",
-            "relativeShaping",
-            "sum",
+            "accumulatedDistanceReward",
+            "accumulatedVelocityReward",
+            "accumulatedShapingReward",
+            "accumulatedStep",
+            "accumulatedInRangeReward",
+            "accumulatedInRangeReward_theta",
+            "accumulatedInRangeReward_thetaDot",
+            "accumulatedTerminationReward_success",
+            "accumulatedTerminationReward_failure",
+            "accumulatedTruncationReward",
+            "accumulatedRelativeShapingReward",
+            "accumulatedRewardSum",
             "stepNumber"
         ]
 
