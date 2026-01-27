@@ -96,6 +96,18 @@ class hill2dArm(gym.Env):
         self._thetaRange = [abs(self.envParams["thetaMin"] - self.target), abs(self.envParams["thetaMax"] - self.target)]
         self._omegaRange = [abs(self.envParams["omegaMin"] - self.targetVelocity), abs(self.envParams["omegaMax"] - self.targetVelocity)]
 
+        # Make the normalizer class
+        class Normalizer():
+            def __init__(self, thetaRange, thetaDotRange, target, targetVelocity):
+                self.thetaRange = thetaRange
+                self.thetaDotRange = thetaDotRange
+                self.target = target
+                self.targetVelocity = targetVelocity
+
+            def normalize(self, relTheta, relThetaDot):
+                return  relTheta / self.thetaRange[0 if relTheta < self.target else 1], relThetaDot / self.thetaDotRange[0 if relThetaDot < self.targetVelocity else 1]
+        self.normalizer = Normalizer(self._thetaRange, self._omegaRange, self.target, self.targetVelocity)
+
         # Initialize the state
         if not isinstance(initialConditions, np.ndarray):
             if(initialConditions == None):
@@ -209,7 +221,20 @@ class hill2dArm(gym.Env):
         if(cond1 and cond2):
             return True
         return False
-    
+
+    def normalize(self, variable, update = True):
+        """
+        Normalizes the given variable using the normalizer class.
+
+        Args:
+            variable (np.array): The variable to be normalized.
+            update (bool): Whether to update the normalizer statistics. Default is True.
+
+        Returns:
+            np.array: The normalized variable.
+        """
+        return np.array(self.normalizer.normalize(variable[0], variable[1]), dtype=np.float32)
+
     def getActualState(self, relativeState = None):
         """
         Returns the actual state of the agent.

@@ -67,6 +67,7 @@ class DDQN():
         assert "run_save_path" in args, "The path to save the training data and model is required in args"
         assert "action_space" in args, "Action space is required in args (Should be a list of available actions)"
         assert "env" in args, "The environment object is required in args"
+        assert "env_options" in args, "The environment options is required in args"
         assert "stateSize" in args, "The size of the state space is required in args"
         assert "stop_condition" in args, "Stop conditions should be emphasized in stop_condition"
 
@@ -128,6 +129,7 @@ class DDQN():
         self.actionSpace = args["action_space"]
         self.nActions = len(self.actionSpace)
         self.env = args["env"]
+        self.envOptions = args["env_options"]
         self.stateSize = args["stateSize"]
         self.stop_condition = args["stop_condition"]
 

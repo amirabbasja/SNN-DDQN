@@ -63,6 +63,7 @@ class PPO:
         assert "run_save_path" in args, "The path to save the training data and model is required in args"
         assert "action_space" in args, "Action space is required in args (Should be a list of available actions)"
         assert "env" in args, "The environment object is required in args"
+        assert "env_options" in args, "The environment options is required in args"
         assert "stateSize" in args, "The size of the state space is required in args"
         assert "stop_condition" in args, "Stop conditions should be emphasized in stop_condition"
 
@@ -123,8 +124,19 @@ class PPO:
         self.actionSpace = args["action_space"]
         self.nActions = len(self.actionSpace)
         self.env = args["env"]
+        self.envOptions = args["env_options"]
         self.stateSize = args["stateSize"]
         self.stop_condition = args["stop_condition"]
+
+        # Normalizer functions (if any)
+        self.normalizer = None
+        self.noramalizeObservation = False
+        if self.args["env_options"].get("observationNormalization", False):
+            if not hasattr(self.args["env_options"].get("normalizer", None), "normalize"):
+                raise ValueError("The normalizer function must have a 'normalize' method")
+            
+            self.normalizer = self.args["env_options"].get("normalizer", None)
+            self.noramalizeObservation = True
 
         # PPO parameters
         self.learningRate = args["algorithm_options"]["learning_rate"]
@@ -225,7 +237,7 @@ class PPO:
         
         # Works only for discrete action spaces
         return int(action.item()), float(logProb.item()), networkInfo
-    
+
     def rollout(self, episodeNumber):
         """
         Collect the data for each batch. Collected data are as follows:
@@ -262,6 +274,11 @@ class PPO:
             startTimestep = t
             startTimestamp = time.time()
             obs, info = self.env.reset(seed = randomSeed)
+
+            # Normalize observation
+            if self.noramalizeObservation:
+                obs = self.normalizer.normalize(obs, update = True)
+
             initialCondition = np.copy(obs)
             
             # Debug info
@@ -291,7 +308,11 @@ class PPO:
                         _spikesPerLayer = [spikes + newFeedForwardSpikes for spikes, newFeedForwardSpikes in zip(_spikesPerLayer, networkInfo["spikesPerLayer"])]
                 
                 obs, reward, terminated, truncated, info = self.env.step(action)
-                
+
+                # Normalize observation
+                if self.noramalizeObservation:
+                    obs = self.normalizer.normalize(obs, update = True)
+
                 episodeRewards.append(reward)
                 # Ensure we append a plain Python int
                 batchActions.append(int(action))

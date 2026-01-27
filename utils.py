@@ -5,16 +5,13 @@ from typing import Union, Dict
 
 from tqdm import tqdm
 import pandas as pd
-import random, imageio, time, copy
+import random, imageio, time
 import numpy as np
 import gymnasium as gym
 import matplotlib.pyplot as plt
 
 import torch.nn as nn
 import torch
-import snntorch as snn
-from snntorch import spikeplot as splt
-from snntorch import spikegen
 
 
 class ReplayMemory(object):
@@ -151,6 +148,95 @@ class ReplayMemory(object):
             # nextState = tf.convert_to_tensor(np.array([e.nextState for e in miniBatch if e != None]), dtype=tf.float32)
             # done = tf.convert_to_tensor(np.array([e.done for e in miniBatch if e != None]).astype(np.uint8), dtype=tf.float32)
         return tuple((state, action, reward, nextState, done))
+
+class RunningMeanStd:
+    """
+    Tracks the running mean and variance of data using Welford's numerically stable online algorithm
+    (with support for merging batch statistics correctly).
+
+    * Notes
+        The variance is the population variance (divided by count, not count-1).
+        Initial variance is set to 1.0.
+        A small epsilon is used as the initial count to provide a non-zero denominator early on.
+    """
+    def __init__(self, shape: tuple[int, ...], epsilon: float = 1e-8):
+        """
+        Initialize the running statistics.
+
+        Args:
+        ----------
+        shape (tuple[int, ...]): Shape of the data vector (e.g., (observation_dim,) for flat observations).
+        epsilon (float): Small constant added to the initial count to avoid division by zero 
+            and to provide a reasonable initial scale for normalization (default 1e-8)
+        """
+        self.mean = np.zeros(shape, dtype=np.float64)
+        self.var = np.ones(shape, dtype=np.float64)
+        self.count = epsilon
+
+    def update(self, x: np.ndarray) -> None:
+        """
+        Update the running statistics with new data.
+
+        Args:
+            x (np.ndarray): New data to incorporate.
+                If 1D: treated as a single observation (shape = self.mean.shape).
+                If 2D: treated as a batch of observations (shape[0] = batch size, shape[1:] must match self.mean.shape).
+        """
+        x = np.asarray(x, dtype=np.float64)
+
+        # Ensure x is at least 2D for consistent batch handling
+        if x.ndim == 1:
+            x = x[None, :]  # Add batch dimension
+
+        # Compute moments of the incoming batch
+        batch_mean = np.mean(x, axis=0)
+        batch_var = np.var(x, axis=0)  # Population variance (ddof=0)
+        batch_count = x.shape[0]
+
+        self._update_from_moments(batch_mean, batch_var, batch_count)
+
+    def _update_from_moments(self, batch_mean: np.ndarray, batch_var: np.ndarray, batch_count: float) -> None:
+        """
+        Update running statistics by merging with pre-computed moments of a new batch.
+
+        Args:
+            batch_mean (np.ndarray): Mean of the new batch.
+            batch_var (np.ndarray): Population variance of the new batch.
+            batch_count (float or int): Number of samples in the new batch.
+        """
+        delta = batch_mean - self.mean
+        total_count = self.count + batch_count
+
+        new_mean = self.mean + delta * batch_count / total_count
+        m_a = self.var * self.count
+        m_b = batch_var * batch_count
+        M2 = m_a + m_b + np.square(delta) * self.count * batch_count / total_count
+        new_var = M2 / total_count
+
+        # Update state
+        self.mean = new_mean
+        self.var = new_var
+        self.count = total_count
+
+class ObservationNormalizer_RMS:
+    def __init__(self, obsShape, clipRange=None):
+        self.rms = RunningMeanStd(obsShape)
+        self.clipRange = clipRange
+
+    def normalize(self, obs, update=True):
+        if update:
+            self.rms.update(obs)
+
+        obsNorm = (obs - self.rms.mean) / np.sqrt(self.rms.var + 1e-8)
+
+        if self.clipRange is not None:
+            obsNorm = np.clip(
+                obsNorm, 
+                -self.clipRange, 
+                self.clipRange
+            )
+
+        return obsNorm
 
 def decayEbsilon(currE: float, rate:float, minE:float) -> float:
     """

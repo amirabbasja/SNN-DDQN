@@ -61,11 +61,51 @@ else:
     shutil.copyfile(os.path.join(os.path.dirname(__file__), "conf.json"), os.path.join(runSavePath, "conf.json"))
 
 # Make the environment
-env = gym.make(args.env)
-state, info = env.reset() # Get a sample state of the environment 
-stateSize = env.observation_space.shape # Number of variables to define current step 
-nActions = env.action_space.n # Number of actions 
-actionSpace = np.arange(nActions).tolist() 
+_customEnvironment = False
+if args.env in ["LunarLander-v3"]:
+    try:
+        env = gym.make(args.env)
+        state, info = env.reset() # Get a sample state of the environment 
+        stateSize = env.observation_space.shape # Number of variables to define current step 
+        nActions = env.action_space.n # Number of actions 
+        actionSpace = np.arange(nActions).tolist() 
+    except:
+        raise ValueError(f"Error when making the environment {args.env}")
+else:
+    # Custom environment - Look for environment class in ./envs/<name>/<name>.py:<name>
+    # where <name> is the name of the custom environemnt
+    if not os.path.isfile(f"./envs/{args.env}/{args.env}.py"):
+        raise Exception(f"Custom environemnt {args.env} not found in /envs/{args.env}/{args.env}.py")
+    
+    # Import the environment class
+    envClass = checkAndImportClass(f"envs.{args.env}.{args.env}", args.env)
+    if envClass is None:
+        raise ValueError(f"Error when importing the custom environment class {args.env}")
+    try:
+        env = envClass(**args.env_options)
+        state, info = env.reset() # Get a sample state of the environment 
+        stateSize = env.nObservationSpace # Number of variables to define current step 
+        nActions = env.nActionSpace # Number of actions 
+        actionSpace = np.arange(nActions).tolist() 
+        _customEnvironment = True
+    except Exception as e:
+        raise ValueError(f"Error when making the custom environment {args.env}: {str(e)}")
+
+# Handle the necessary env_options
+if args.env_options.get("observationNormalization", False):
+    normalizationFunctionName = args.env_options.get("normalizationFunction", None)
+
+    if not normalizationFunctionName:
+        raise ValueError("Normalization function not specified in env_options despite observationNormalization being True")
+
+    if normalizationFunctionName == "RunningMeanStd":
+        # TODO: Add a enum for supported normalization functions
+        # Do nothing
+        pass
+    else:
+        if _customEnvironment:
+            if envClass and not hasattr(envClass, normalizationFunctionName):
+                raise ValueError(f"Normalization function {normalizationFunctionName} not found in custom environment {args.env}")
 
 # Make the model objects
 if args.network == "ann":
