@@ -129,6 +129,7 @@ class DDQN():
         self.actionSpace = args["action_space"]
         self.nActions = len(self.actionSpace)
         self.env = args["env"]
+        self.envName = args["envName"]
         self.envOptions = args["env_options"]
         self.stateSize = args["stateSize"]
         self.stop_condition = args["stop_condition"]
@@ -481,7 +482,7 @@ class DDQN():
                 "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
                 "actions": episodeActions,
                 "envSave": self.env.envSave if hasattr(self.env, "envSave") else None,
-                "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
+                "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.envName, lastEpisodeReward = reward)
             })
             
             self._last100WinPercentage = np.sum([1 if exp["isWon"] else 0 for exp in self.lstHistory[-100:]]) / 100

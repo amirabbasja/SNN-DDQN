@@ -64,6 +64,7 @@ else:
 _customEnvironment = False
 if args.env in ["LunarLander-v3"]:
     try:
+        envName = args.env
         env = gym.make(args.env)
         state, info = env.reset() # Get a sample state of the environment 
         stateSize = env.observation_space.shape # Number of variables to define current step 
@@ -82,6 +83,7 @@ else:
     if envClass is None:
         raise ValueError(f"Error when importing the custom environment class {args.env}")
     try:
+        envName = args.env
         env = envClass(**args.env_options)
         state, info = env.reset() # Get a sample state of the environment 
         stateSize = env.nObservationSpace # Number of variables to define current step 
@@ -143,6 +145,7 @@ _networks = {
 args = vars(args) # Convert to dictionary
 args["action_space"] = actionSpace
 args["env"] = env
+args["envName"] = envName
 args["stateSize"] = stateSize
 
 args["uploadInfo"] = uploadInfo

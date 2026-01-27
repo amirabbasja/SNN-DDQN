@@ -124,6 +124,7 @@ class PPO:
         self.actionSpace = args["action_space"]
         self.nActions = len(self.actionSpace)
         self.env = args["env"]
+        self.envName = args["envName"]
         self.envOptions = args["env_options"]
         self.stateSize = args["stateSize"]
         self.stop_condition = args["stop_condition"]
@@ -131,11 +132,11 @@ class PPO:
         # Normalizer functions (if any)
         self.normalizer = None
         self.noramalizeObservation = False
-        if self.args["env_options"].get("observationNormalization", False):
-            if not hasattr(self.args["env_options"].get("normalizer", None), "normalize"):
+        if args["env_options"].get("observationNormalization", False):
+            if not hasattr(args["env_options"].get("normalizer", None), "normalize"):
                 raise ValueError("The normalizer function must have a 'normalize' method")
             
-            self.normalizer = self.args["env_options"].get("normalizer", None)
+            self.normalizer = args["env_options"].get("normalizer", None)
             self.noramalizeObservation = True
 
         # PPO parameters
@@ -345,7 +346,7 @@ class PPO:
                 "layerWiseNorms": _layerWiseNorms if self.debugMode else None,
                 "actions": episodeActions,
                 "envSave": self.env.envSave if hasattr(self.env, "envSave") else None,
-                "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.env, lastEpisodeReward = reward)
+                "isWon": info["isWon"] if "isWon" in info else checkWinCondition(self.envName, lastEpisodeReward = reward)
             })
             
             self._last100WinPercentage = np.sum([1 if exp["isWon"] else 0 for exp in self.lstHistory[-100:]]) / 100
@@ -673,7 +674,7 @@ class PPO:
             methods (str): The method to calculate the advantage. Options are:
                 - 'monte_carlo': calculates the montecarlo advantage.
                     A_{phi,k} = R_k - V_{phi,k} where  R_k is the reward-to-go. and V_{phi,k} is the value estimated by the critic network.
-                - 'gae': calculates the generalized advantage estimation (GAE). #TODO
+                - 'gae': calculates the generalized advantage estimation (GAE).
                 - 'td': calculates the temporal difference (TD) advantage. #TODO
             kwargs: additional arguments required for specific methods.
         """
