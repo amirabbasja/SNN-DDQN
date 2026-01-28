@@ -131,13 +131,14 @@ class PPO:
 
         # Normalizer functions (if any)
         self.normalizer = None
-        self.noramalizeObservation = False
+        self.normalizeObservations = False
         if args["env_options"].get("observationNormalization", False):
-            if not hasattr(args["env_options"].get("normalizer", None), "normalize"):
-                raise ValueError("The normalizer function must have a 'normalize' method")
+            print(args["env_options"])
+            if not hasattr(args["env_options"].get("obsNormalizer", None), "normalize"):
+                raise ValueError("The obsNormalizer function must have a 'normalize' method")
             
-            self.normalizer = args["env_options"].get("normalizer", None)
-            self.noramalizeObservation = True
+            self.normalizer = args["env_options"].get("obsNormalizer", None)
+            self.normalizeObservations = True
 
         # PPO parameters
         self.learningRate = args["algorithm_options"]["learning_rate"]
@@ -277,7 +278,7 @@ class PPO:
             obs, info = self.env.reset(seed = randomSeed)
 
             # Normalize observation
-            if self.noramalizeObservation:
+            if self.normalizeObservations:
                 obs = self.normalizer.normalize(obs, update = True)
 
             initialCondition = np.copy(obs)
@@ -311,7 +312,7 @@ class PPO:
                 obs, reward, terminated, truncated, info = self.env.step(action)
 
                 # Normalize observation
-                if self.noramalizeObservation:
+                if self.normalizeObservations:
                     obs = self.normalizer.normalize(obs, update = True)
 
                 episodeRewards.append(reward)

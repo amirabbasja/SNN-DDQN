@@ -134,6 +134,17 @@ class DDQN():
         self.stateSize = args["stateSize"]
         self.stop_condition = args["stop_condition"]
 
+        # Normalizer functions (if any)
+        self.normalizer = None
+        self.normalizeObservations = False
+        if args["env_options"].get("observationNormalization", False):
+            print(args["env_options"])
+            if not hasattr(args["env_options"].get("obsNormalizer", None), "normalize"):
+                raise ValueError("The obsNormalizer function must have a 'normalize' method")
+            
+            self.normalizer = args["env_options"].get("obsNormalizer", None)
+            self.normalizeObservations = True
+
         # DDQN hyperparameters
         _options = args["algorithm_options"]
         self.learningRate = _options["learning_rate"]#
@@ -427,6 +438,11 @@ class DDQN():
                 # Take a step
                 observation, reward, terminated, truncated, info = self.env.step(action)
 
+
+                # Normalize observation
+                if self.normalizeObservations:
+                    observation = self.normalizer.normalize(observation, update = True)
+                
                 # Store the experience of the current step in an experience deque.
                 self.mem.addNew(self.agentExp(self.state, action,reward, observation,True if terminated or truncated else False))
 

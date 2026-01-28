@@ -12,6 +12,7 @@ args, unknown = parser.parse_known_args()
 
 # Deserialize the JSON strings into dictionaries
 args.env_options = json.loads(args.env_options)
+print(args.network_actor_options)
 args.network_actor_options = json.loads(args.network_actor_options)
 args.network_critic_options = json.loads(args.network_critic_options)
 args.algorithm_options = json.loads(args.algorithm_options)
@@ -103,7 +104,8 @@ if args.env_options.get("observationNormalization", False):
 
     if normalizationFunctionName == "RunningMeanStd":
         # TODO: Add a enum for supported normalization functions
-        args["env_options"]["obsNormalizer"] = ObservationNormalizer_RMS(
+        print(stateSize)
+        args.env_options["obsNormalizer"] = ObservationNormalizer_RMS(
             obsShape = stateSize,
             clipRange = args.env_options.get("normalizationClipRange", .5)
         )
