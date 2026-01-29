@@ -133,7 +133,6 @@ class PPO:
         self.normalizer = None
         self.normalizeObservations = False
         if args["env_options"].get("observationNormalization", False):
-            print(args["env_options"])
             if not hasattr(args["env_options"].get("obsNormalizer", None), "normalize"):
                 raise ValueError("The obsNormalizer function must have a 'normalize' method")
             

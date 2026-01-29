@@ -55,7 +55,7 @@ class hill2dArm(gym.Env):
     v2: Now when taking a step, or resetting, it returns the relative state (to the targets) instead of the state itself
     v1: The initial version
     """
-    def __init__(self, initialConditions, rewardWeights, envParams, target, targetOffset):
+    def __init__(self, initialConditions, rewardWeights, envParams, target, targetOffset, **kwargs):
         super().__init__()
 
         # Define the target

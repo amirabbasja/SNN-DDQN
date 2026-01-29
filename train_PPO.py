@@ -104,7 +104,6 @@ if args.env_options.get("observationNormalization", False):
 
     if normalizationFunctionName == "RunningMeanStd":
         # TODO: Add a enum for supported normalization functions
-        print(stateSize)
         args.env_options["obsNormalizer"] = ObservationNormalizer_RMS(
             obsShape = stateSize,
             clipRange = args.env_options.get("normalizationClipRange", .5)
@@ -114,7 +113,9 @@ if args.env_options.get("observationNormalization", False):
             if envClass and not hasattr(envClass, normalizationFunctionName):
                 raise ValueError(f"Normalization function {normalizationFunctionName} not found in custom environment {args.env}")
             else:
-                args["env_options"]["obsNormalizer"] = getattr(envClass, normalizationFunctionName)()
+                args.env_options["obsNormalizer"] = getattr(envClass, normalizationFunctionName)
+        else:
+            raise ValueError(f"Normalization function {normalizationFunctionName} not found")
 
 # Make the model objects
 if args.network_actor == "ann":
