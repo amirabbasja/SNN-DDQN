@@ -136,7 +136,11 @@ class PPO:
             if not hasattr(args["env_options"].get("obsNormalizer", None), "normalize"):
                 raise ValueError("The obsNormalizer function must have a 'normalize' method")
             
-            self.normalizer = args["env_options"].get("obsNormalizer", None)
+            if(args["customEnvironment"]):
+                # If a custom environment is used, it should have a normalize() method itself 
+                self.normalizer = self.env
+            else: 
+                self.normalizer = args["env_options"].get("obsNormalizer", None)
             self.normalizeObservations = True
 
         # PPO parameters

@@ -12,7 +12,6 @@ args, unknown = parser.parse_known_args()
 
 # Deserialize the JSON strings into dictionaries
 args.env_options = json.loads(args.env_options)
-print(args.network_actor_options)
 args.network_actor_options = json.loads(args.network_actor_options)
 args.network_critic_options = json.loads(args.network_critic_options)
 args.algorithm_options = json.loads(args.algorithm_options)
@@ -94,7 +93,6 @@ else:
     except Exception as e:
         raise ValueError(f"Error when making the custom environment {args.env}: {str(e)}")
 
-
 # Handle the necessary env_options
 if args.env_options.get("observationNormalization", False):
     normalizationFunctionName = args.env_options.get("normalizationFunction", None)
@@ -113,7 +111,8 @@ if args.env_options.get("observationNormalization", False):
             if envClass and not hasattr(envClass, normalizationFunctionName):
                 raise ValueError(f"Normalization function {normalizationFunctionName} not found in custom environment {args.env}")
             else:
-                args.env_options["obsNormalizer"] = getattr(envClass, normalizationFunctionName)
+                # The environment class itself should have a normalize() method
+                args.env_options["obsNormalizer"] = envClass
         else:
             raise ValueError(f"Normalization function {normalizationFunctionName} not found")
 
@@ -148,6 +147,7 @@ _networks = {
 args = vars(args) # Convert to dictionary
 args["action_space"] = actionSpace
 args["env"] = env
+args["customEnvironment"] = _customEnvironment
 args["envName"] = envName
 args["stateSize"] = stateSize
 
