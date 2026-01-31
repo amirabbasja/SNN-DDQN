@@ -5,15 +5,18 @@
             1.57,
             0.8
         ],
+        "targetStepsInRange": 15,             // Defaults to 10 if not specified
+        "normalizeObservations": true,        // Defaults to false if not specified
+        "normalizationFunction": "normalize", // Alternatively, use RunningMeanStd or other supported methods
         "rewardWeights": {
             "shaping": 1,
             "distance": -0.1,
             "velocity": -0.1,
             "step": 0,
             "inRange": 1,
-            "termination_success": 50,  // Has to be a positive number
-            "termination_failure": 10,  // Has to be a positive number
-            "truncation": 0             // Has to be a positive number  
+            "termination_success": 50,        // Has to be a positive number
+            "termination_failure": 10,        // Has to be a positive number
+            "truncation": 0                   // Has to be a positive number  
         },
         "envParams": {
             "thetaMin": 0,

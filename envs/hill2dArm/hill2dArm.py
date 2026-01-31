@@ -80,6 +80,11 @@ class hill2dArm(gym.Env):
         
         # Set target velocity
         self.targetVelocity = 0
+        
+        # Set target in range steps - default is 10 steps
+        self.targetStepsInRange = 10
+        if "targetStepsInRange" in envParams:
+            self.targetStepsInRange = envParams["targetStepsInRange"]
 
         # The observation space:
         # 1) angular difference from target angle, 
@@ -278,7 +283,7 @@ class hill2dArm(gym.Env):
             # print("IN RANGE")
             
             # Termination condition: Forearm position and velocity inside the range for 10 timesteps
-            if 10 < self._stepsInRange:
+            if self.targetStepsInRange < self._stepsInRange:
                 __successReward = 1
                 terminated = True
                 won = True
